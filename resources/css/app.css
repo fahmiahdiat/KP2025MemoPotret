@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Custom components untuk Memo Potret */
+.btn-custom {
+    @apply inline-block px-6 py-3 font-semibold text-center rounded-lg transition-all duration-300;
+}
+
+.btn-primary-custom {
+    @apply bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5;
+}
+
+.btn-secondary-custom {
+    @apply bg-gray-100 text-gray-900 hover:bg-gray-200 hover:shadow-md;
+}
+
+.package-card {
+    @apply bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100;
+}
+
+.feature-item {
+    @apply flex items-start space-x-3;
+}

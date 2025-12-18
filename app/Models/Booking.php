@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
@@ -124,7 +125,7 @@ class Booking extends Model
                 'status' => 'in_progress',
                 'icon' => '🎬',
                 'title' => 'Dalam Proses',
-                'description' => 'Otomatis setelah DP terverifikasi',
+                'description' => 'Sesi Pemotretan',
                 'is_auto' => true,
                 'date' => $this->in_progress_at ? $this->in_progress_at->format('d/m H:i') : null
             ],
@@ -132,7 +133,7 @@ class Booking extends Model
                 'status' => 'results_uploaded',
                 'icon' => '📤',
                 'title' => 'Hasil Diupload',
-                'description' => 'Admin mengupload hasil foto',
+                'description' => 'Aadmin mengupload hasil foto',
                 'is_auto' => false,
                 'date' => $this->results_uploaded_at ? $this->results_uploaded_at->format('d/m H:i') : null
             ],
@@ -254,7 +255,7 @@ class Booking extends Model
             if (!$this->dp_amount || $this->dp_amount == 0) {
                 return $this->total_amount;
             }
-            
+
             // Jika sudah ada DP, hitung sisa
             return max(0, $this->total_amount - $this->dp_amount);
         }
@@ -263,30 +264,159 @@ class Booking extends Model
 
     public function getPaymentStatusTextAttribute()
     {
-        if ($this->remaining_amount == 0) return '✅ LUNAS';
-        if ($this->remaining_amount > 0 && $this->remaining_payment_proof) return '⏳ Menunggu Verifikasi';
-        
+        if ($this->remaining_amount == 0)
+            return '✅ LUNAS';
+        if ($this->remaining_amount > 0 && $this->remaining_payment_proof)
+            return '⏳ Menunggu Verifikasi';
+
         $hariSetelahEvent = now()->diffInDays($this->event_date, false);
-        
-        if ($hariSetelahEvent < -7) return '⚠️ Telat bayar (lewat H+7)';
-        if ($hariSetelahEvent < 0) return '🔥 Bayar sekarang';
-        if ($hariSetelahEvent <= 7) return '🔥 Segera bayar';
-        
+
+        if ($hariSetelahEvent < -7)
+            return '⚠️ Telat bayar (lewat H+7)';
+        if ($hariSetelahEvent < 0)
+            return '🔥 Bayar sekarang';
+        if ($hariSetelahEvent <= 7)
+            return '🔥 Segera bayar';
+
         return 'Bayar H-7';
     }
 
     public function getPaymentStatusClassAttribute()
     {
-        if ($this->remaining_amount == 0) return 'bg-green-100 text-green-800';
-        if ($this->remaining_amount > 0 && $this->remaining_payment_proof) return 'bg-yellow-100 text-yellow-800';
-        
+        if ($this->remaining_amount == 0)
+            return 'bg-green-100 text-green-800';
+        if ($this->remaining_amount > 0 && $this->remaining_payment_proof)
+            return 'bg-yellow-100 text-yellow-800';
+
         $hariSetelahEvent = now()->diffInDays($this->event_date, false);
-        
-        if ($hariSetelahEvent < -7) return 'bg-red-100 text-red-800';
-        if ($hariSetelahEvent < 0) return 'bg-red-100 text-red-800';
-        if ($hariSetelahEvent <= 7) return 'bg-red-100 text-red-800';
-        
+
+        if ($hariSetelahEvent < -7)
+            return 'bg-red-100 text-red-800';
+        if ($hariSetelahEvent < 0)
+            return 'bg-red-100 text-red-800';
+        if ($hariSetelahEvent <= 7)
+            return 'bg-red-100 text-red-800';
+
         return 'bg-blue-100 text-blue-800';
+    }
+
+
+    /**
+     * Cek apakah tanggal ini sudah penuh (5 booking dengan DP diverifikasi)
+     */
+    public static function isDateFull($date)
+    {
+        $bookedCount = self::where('event_date', $date)
+            ->where(function ($query) {
+                $query->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                    ->where(function ($q) {
+                        $q->whereNotNull('payment_proof')
+                            ->orWhereNotNull('dp_verified_at');
+                    });
+            })
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        return $bookedCount >= 5;
+    }
+
+    /**
+     * Hitung slot yang tersedia untuk tanggal tertentu
+     */
+    public static function getAvailableSlots($date)
+    {
+        $maxSlots = 5;
+
+        $bookedCount = self::where('event_date', $date)
+            ->where(function ($query) {
+                $query->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                    ->where(function ($q) {
+                        $q->whereNotNull('payment_proof')
+                            ->orWhereNotNull('dp_verified_at');
+                    });
+            })
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        return max(0, $maxSlots - $bookedCount);
+    }
+
+    // Scope untuk booking yang "valid" (mengisi slot)
+    public function scopeOccupiesSlot($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                ->where(function ($subQ) {
+                    $subQ->whereNotNull('payment_proof')
+                        ->orWhereNotNull('dp_verified_at');
+                });
+        })
+            ->where('status', '!=', 'cancelled');
+    }
+
+    /**
+     * Scope untuk booking yang aktif (tidak cancelled)
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', '!=', 'cancelled');
+    }
+
+    /**
+     * Cek apakah booking ini DP sudah diverifikasi
+     */
+    public function getIsDpVerifiedAttribute()
+    {
+        return !is_null($this->dp_verified_at);
+    }
+
+    /**
+     * Relasi untuk mendapatkan booking di tanggal yang sama
+     */
+    public function bookingsOnSameDate(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'event_date', 'event_date')
+            ->where('id', '!=', $this->id);
+    }
+
+    /**
+     * Hitung jumlah slot terisi untuk tanggal booking ini
+     */
+    public function getSlotCountAttribute(): int
+    {
+        return Booking::where('event_date', $this->event_date)
+            ->where('id', '!=', $this->id)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($query) {
+                $query->whereNotNull('payment_proof')
+                    ->orWhereNotNull('dp_verified_at');
+            })
+            ->count();
+    }
+
+    /**
+     * Hitung slot tersisa untuk tanggal booking ini
+     */
+    public function getSlotsLeftAttribute(): int
+    {
+        $maxSlots = 5;
+        return max(0, $maxSlots - $this->slot_count - 1); // -1 untuk booking ini sendiri
+    }
+
+    /**
+     * Cek apakah tanggal sudah penuh
+     */
+    public function getIsDateFullAttribute(): bool
+    {
+        return $this->slots_left === 0;
+    }
+
+    /**
+     * Scope untuk booking di tanggal tertentu
+     */
+    public function scopeForDate($query, $date)
+    {
+        return $query->where('event_date', $date);
     }
 
     /**
@@ -297,22 +427,22 @@ class Booking extends Model
         parent::boot();
 
         static::creating(function ($booking) {
-        if ($booking->remaining_amount === null) {
-            // ✅ Default: sisa tagihan = total_amount (karena belum DP)
-            $booking->remaining_amount = $booking->total_amount;
-        }
+            if ($booking->remaining_amount === null) {
+                // ✅ Default: sisa tagihan = total_amount (karena belum DP)
+                $booking->remaining_amount = $booking->total_amount;
+            }
 
-        // Generate booking code jika belum ada
-        if (!$booking->booking_code) {
-            $booking->booking_code = 'BK-' . strtoupper(uniqid());
-        }
-    });
+            // Generate booking code jika belum ada
+            if (!$booking->booking_code) {
+                $booking->booking_code = 'BK-' . strtoupper(uniqid());
+            }
+        });
 
-    static::updating(function ($booking) {
-        // Jika status completed, set remaining_amount ke 0
-        if ($booking->status === 'completed' && $booking->remaining_amount > 0) {
-            $booking->remaining_amount = 0;
-        }
-    });
+        static::updating(function ($booking) {
+            // Jika status completed, set remaining_amount ke 0
+            if ($booking->status === 'completed' && $booking->remaining_amount > 0) {
+                $booking->remaining_amount = 0;
+            }
+        });
     }
 }

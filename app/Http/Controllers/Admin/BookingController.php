@@ -8,14 +8,94 @@ use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $bookings = Booking::with(['user', 'package'])
-            ->latest()
-            ->paginate(20);
+        $query = Booking::with(['user', 'package'])
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $search = $request->q;
+                $q->where(function ($query) use ($search) {
+                    $query->where('booking_code', 'like', "%{$search}%")
+                        ->orWhereHas('package', function ($packageQuery) use ($search) {
+                            $packageQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->filled('status'), function ($q) use ($request) {
+                $q->where('status', $request->status);
+            })
+            ->when($request->filled('start_date'), function ($q) use ($request) {
+                $q->where('event_date', '>=', $request->start_date);
+            })
+            ->when($request->filled('end_date'), function ($q) use ($request) {
+                $q->where('event_date', '<=', $request->end_date);
+            })
+            ->when($request->filled('slot_status'), function ($q) use ($request) {
+                // Dapatkan semua tanggal event yang unik
+                $eventDates = Booking::select('event_date')
+                    ->where('status', '!=', 'cancelled')
+                    ->where(function ($query) {
+                    $query->whereNotNull('payment_proof')
+                        ->orWhereNotNull('dp_verified_at');
+                })
+                    ->groupBy('event_date')
+                    ->havingRaw('COUNT(*) >= ?', [$request->slot_status === 'almost_full' ? 4 : 5])
+                    ->pluck('event_date')
+                    ->toArray();
+
+                if ($request->slot_status === 'available') {
+                    // Tanggal dengan slot tersedia (kurang dari 5 booking)
+                    $fullDates = Booking::select('event_date')
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function ($query) {
+                        $query->whereNotNull('payment_proof')
+                            ->orWhereNotNull('dp_verified_at');
+                    })
+                        ->groupBy('event_date')
+                        ->havingRaw('COUNT(*) >= 5')
+                        ->pluck('event_date')
+                        ->toArray();
+
+                    $q->whereNotIn('event_date', $fullDates);
+                } elseif ($request->slot_status === 'full') {
+                    // Tanggal sudah penuh
+                    $q->whereIn('event_date', $eventDates);
+                } elseif ($request->slot_status === 'almost_full') {
+                    // Tanggal hampir penuh (4 booking)
+                    $q->whereIn('event_date', $eventDates);
+                }
+            });
+
+        // Apply sorting
+        switch ($request->get('sort', 'latest')) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'event_date_asc':
+                $query->orderBy('event_date', 'asc')->orderBy('event_time', 'asc');
+                break;
+            case 'event_date_desc':
+                $query->orderBy('event_date', 'desc')->orderBy('event_time', 'asc');
+                break;
+            case 'price_high':
+                $query->orderBy('total_amount', 'desc');
+                break;
+            case 'price_low':
+                $query->orderBy('total_amount', 'asc');
+                break;
+            case 'latest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $bookings = $query->paginate(15)->withQueryString();
 
         return view('admin.bookings.index', compact('bookings'));
     }
+
 
     public function show(Booking $booking)
     {
@@ -98,26 +178,48 @@ class BookingController extends Controller
                 ], 400);
             }
 
-            $dpAmount = $booking->total_amount * 0.5;
+            // PERBAIKAN: Cek apakah tanggal masih ada slot
+            $bookedCount = Booking::where('event_date', $booking->event_date)
+                ->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                ->whereNotNull('dp_verified_at')
+                ->where('id', '!=', $booking->id) // Kecualikan booking ini
+                ->count();
 
-            // ✅ PERBAIKAN: Hitung sisa tagihan setelah DP diverifikasi
+            if ($bookedCount >= 5) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '❌ Tidak bisa verifikasi DP. Tanggal ini sudah penuh (5/5).'
+                ], 400);
+            }
+
+            $dpAmount = $booking->total_amount * 0.5;
             $remainingAmount = $booking->total_amount - $dpAmount;
 
+            // Update booking
             $booking->update([
                 'dp_amount' => $dpAmount,
-                'remaining_amount' => $remainingAmount, // ✅ UPDATE SISA TAGIHAN
-                'status' => 'in_progress',
-                'dp_verified_at' => now(),
-                'in_progress_at' => now(),
+                'remaining_amount' => $remainingAmount,
+                'status' => 'confirmed',
+                'dp_verified_at' => now(), // DP diverifikasi
             ]);
+
+            // PERBAIKAN: Cek apakah tanggal sekarang sudah penuh
+            $newBookedCount = $bookedCount + 1;
+            $isFull = $newBookedCount >= 5;
 
             return response()->json([
                 'success' => true,
-                'message' => 'DP berhasil diverifikasi. Booking dalam proses.',
+                'message' => $isFull
+                    ? '✅ DP diverifikasi. PERHATIAN: Tanggal ini sekarang sudah PENUH (5/5)!'
+                    : '✅ DP diverifikasi. Slot tersisa: ' . (5 - $newBookedCount),
                 'data' => [
                     'status' => $booking->status,
-                    'dp_amount' => $dpAmount,
-                    'remaining_amount' => $remainingAmount // ✅ TAMBAHKAN DI RESPONSE
+                    'dp_verified_at' => $booking->dp_verified_at,
+                    'slot_info' => [
+                        'booked' => $newBookedCount,
+                        'available' => max(0, 5 - $newBookedCount),
+                        'is_full' => $isFull
+                    ]
                 ]
             ]);
         } catch (\Exception $e) {
@@ -130,46 +232,46 @@ class BookingController extends Controller
     }
 
     public function verifyFullPayment(Request $request, Booking $booking)
-{
-    try {
-        if (!in_array($booking->status, ['results_uploaded', 'pending_lunas'])) {
+    {
+        try {
+            if (!in_array($booking->status, ['results_uploaded', 'pending_lunas'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Status tidak sesuai'
+                ], 400);
+            }
+
+            // ✅ PERBAIKAN: Set sisa tagihan ke 0
+            $updateData = [
+                'remaining_amount' => 0, // ✅ SET KE 0
+                'status' => 'completed',
+                'remaining_verified_at' => now(),
+                'completed_at' => now()
+            ];
+
+            if (!$booking->pending_lunas_at && $booking->remaining_payment_proof) {
+                $updateData['pending_lunas_at'] = now();
+            }
+
+            $booking->update($updateData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pelunasan diverifikasi. Status: SELESAI.',
+                'data' => [
+                    'status' => $booking->status,
+                    'remaining_amount' => 0
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error verifying full payment: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Status tidak sesuai'
-            ], 400);
+                'message' => 'Gagal verifikasi: ' . $e->getMessage()
+            ], 500);
         }
-
-        // ✅ PERBAIKAN: Set sisa tagihan ke 0
-        $updateData = [
-            'remaining_amount' => 0, // ✅ SET KE 0
-            'status' => 'completed',
-            'remaining_verified_at' => now(),
-            'completed_at' => now()
-        ];
-
-        if (!$booking->pending_lunas_at && $booking->remaining_payment_proof) {
-            $updateData['pending_lunas_at'] = now();
-        }
-
-        $booking->update($updateData);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pelunasan diverifikasi. Status: SELESAI.',
-            'data' => [
-                'status' => $booking->status,
-                'remaining_amount' => 0
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Error verifying full payment: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Gagal verifikasi: ' . $e->getMessage()
-        ], 500);
     }
-}
 
     public function uploadResults(Request $request, Booking $booking)
     {
@@ -186,11 +288,11 @@ class BookingController extends Controller
 
             // CEK APAKAH UPLOAD PERTAMA ATAU EDIT
             $isFirstUpload = !$booking->drive_link;
-            
+
             if ($isFirstUpload) {
                 // UPLOAD PERTAMA
                 $updateData['results_uploaded_at'] = now();
-                
+
                 // Tentukan status baru
                 if ($booking->remaining_amount == 0) {
                     $updateData['status'] = 'completed';
@@ -205,14 +307,14 @@ class BookingController extends Controller
                 $updateData['results_updated_at'] = now();
                 // Status tetap tidak berubah
                 // results_uploaded_at TETAP
-                \Log::info('Edit link drive untuk booking #' . $booking->id . 
-                          '. Upload pertama: ' . $booking->results_uploaded_at);
+                \Log::info('Edit link drive untuk booking #' . $booking->id .
+                    '. Upload pertama: ' . $booking->results_uploaded_at);
             }
 
             $booking->update($updateData);
 
-            $message = $isFirstUpload ? 
-                '✅ Hasil foto berhasil diupload!' : 
+            $message = $isFirstUpload ?
+                '✅ Hasil foto berhasil diupload!' :
                 '✅ Link hasil berhasil diupdate!';
 
             return redirect()->route('admin.bookings.show', $booking)

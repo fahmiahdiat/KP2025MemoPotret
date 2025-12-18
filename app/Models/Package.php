@@ -14,6 +14,7 @@ class Package extends Model
         'price',
         'duration_hours',
         'description',
+        'thumbnail',
         'features',
         'is_active'
     ];
@@ -24,22 +25,7 @@ class Package extends Model
         'price' => 'decimal:2'
     ];
 
-    // Accessor untuk memastikan features selalu array
-    public function getFeaturesAttribute($value)
-    {
-        if (is_string($value)) {
-            return json_decode($value, true) ?? [];
-        }
-        
-        return $value ?? [];
-    }
-
-    // Mutator untuk menyimpan sebagai JSON
-    public function setFeaturesAttribute($value)
-    {
-        $this->attributes['features'] = json_encode($value);
-    }
-
+  
     public function bookings()
     {
         return $this->hasMany(Booking::class);

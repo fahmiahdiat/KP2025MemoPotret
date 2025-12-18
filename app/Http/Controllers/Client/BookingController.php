@@ -11,153 +11,200 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
-    public function create()
+
+    public function createStep2(Request $request)
     {
-        $packages = Package::where('is_active', true)->get();
+        $validated = $request->validate([
+            'package_id' => 'required|exists:packages,id',
+            'event_date' => 'required|date|after_or_equal:today',
+            'event_time' => 'required|date_format:H:i',
+        ]);
 
-        // Get booked dates for calendar
-        $bookedDates = Booking::whereIn('status', ['confirmed', 'in_progress', 'pending'])
-            ->where('event_date', '>=', Carbon::today())
-            ->pluck('event_date')
-            ->map(function ($date) {
-                return Carbon::parse($date)->format('Y-m-d');
+        $bookedCount = Booking::where('event_date', $validated['event_date'])
+            ->where(function ($query) {
+                $query->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                    ->where(function ($q) {
+                        $q->whereNotNull('payment_proof')
+                            ->orWhereNotNull('dp_verified_at');
+                    });
             })
-            ->unique()
-            ->toArray();
+            ->where('status', '!=', 'cancelled')
+            ->count();
 
-        return view('client.booking.create', compact('packages', 'bookedDates'));
+        if ($bookedCount >= 5) {
+            return redirect()->route('package.show', $validated['package_id'])
+                ->with('error', '❌ Tanggal ini sudah penuh. Silakan pilih tanggal lain.')
+                ->withInput();
+        }
+
+        $package = Package::findOrFail($validated['package_id']);
+
+        // 🔑 PREVIEW BOOKING CODE
+        $previewBookingCode = 'MEMO-' . strtoupper(Str::random(6));
+
+        session()->put('booking_step1', [
+            'package_id' => $validated['package_id'],
+            'event_date' => $validated['event_date'],
+            'event_time' => $validated['event_time'],
+            'package_name' => $package->name,
+            'package_price' => $package->price,
+            'dp_amount' => $package->price * 0.5,
+            'remaining_amount' => $package->price * 0.5,
+            'available_slots' => 5 - $bookedCount,
+            'booking_code' => $previewBookingCode,
+        ]);
+
+        return view('client.booking.step2', compact('package', 'previewBookingCode'));
     }
 
-    public function store(Request $request)
-{
-    $request->validate([
-        'package_id' => 'required|exists:packages,id',
-        'event_date' => 'required|date|after_or_equal:today',
-        'event_time' => 'required|date_format:H:i',
-        'event_location' => 'required|string|max:500',
-        'notes' => 'nullable|string|max:1000',
-    ]);
+    public function storeStep2(Request $request)
+    {
+        $step1Data = session('booking_step1');
 
-    // Check if date is available
-    $isDateBooked = Booking::where('event_date', $request->event_date)
-        ->whereIn('status', ['confirmed', 'in_progress', 'pending'])
-        ->exists();
+        if (!$step1Data) {
+            return redirect()->route('client.dashboard')
+                ->with('error', 'Sesi booking kadaluarsa. Silakan mulai kembali.');
+        }
 
-    if ($isDateBooked) {
-        return back()->withErrors(['event_date' => 'Tanggal ini sudah dipesan. Silakan pilih tanggal lain.']);
+        $request->validate([
+            'event_location' => 'required|string|max:500',
+            'notes' => 'nullable|string|max:1000',
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'payment_notes' => 'nullable|string|max:500',
+
+        ]);
+
+        $bookedCount = Booking::where('event_date', $step1Data['event_date'])
+            ->where(function ($query) {
+                $query->whereIn('status', ['confirmed', 'in_progress', 'pending'])
+                    ->where(function ($q) {
+                        $q->whereNotNull('payment_proof')
+                            ->orWhereNotNull('dp_verified_at');
+                    });
+            })
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        if ($bookedCount >= 5) {
+            return redirect()->route('package.show', $step1Data['package_id'])
+                ->with('error', 'Tanggal ini sudah terisi. Silakan pilih tanggal lain.');
+        }
+
+        $package = Package::findOrFail($step1Data['package_id']);
+
+        $paymentProofPath = $request->file('payment_proof')
+            ->store('payment-proofs', 'public');
+
+        $booking = Booking::create([
+            'booking_code' => $step1Data['booking_code'],
+            'user_id' => auth()->id(),
+            'package_id' => $step1Data['package_id'],
+            'event_date' => $step1Data['event_date'],
+            'event_time' => $step1Data['event_time'],
+            'event_location' => $request->event_location,
+            'notes' => $request->notes,
+            'total_amount' => $package->price,
+            'dp_amount' => $package->price * 0.5,
+            'remaining_amount' => $package->price * 0.5,
+            'status' => 'pending',
+            'payment_proof' => $paymentProofPath,
+            'payment_notes' => $request->payment_notes,
+            'dp_uploaded_at' => now(),
+        ]);
+
+        session()->forget('booking_step1');
+
+        return redirect()
+            ->route('client.bookings.show', $booking)
+            ->with('success', '✅ Booking berhasil dibuat! Admin akan verifikasi DP.');
     }
 
-    $package = Package::findOrFail($request->package_id);
-
-    // PERBAIKAN DISINI: Set remaining_amount = total_amount (karena belum ada DP)
-    $booking = Booking::create([
-        'booking_code' => 'MEMO-' . Str::random(6),
-        'user_id' => auth()->id(),
-        'package_id' => $package->id,
-        'event_date' => $request->event_date,
-        'event_time' => $request->event_time,
-        'event_location' => $request->event_location,
-        'notes' => $request->notes,
-        'total_amount' => $package->price,
-        'remaining_amount' => $package->price, // ✅ SET SISA = TOTAL (karena belum DP)
-        'status' => 'pending',
-    ]);
-
-    return redirect()->route('client.bookings.show', $booking)
-        ->with('success', 'Booking berhasil dibuat! Silakan lakukan pembayaran DP 50%.');
-}
 
     public function show(Booking $booking)
     {
-        // Ensure user can only see their own booking
+        // Authorization check
         if ($booking->user_id !== auth()->id()) {
             abort(403);
         }
 
         $booking->load('package');
 
-        // Pastikan features adalah array
+        // Decode features jika string JSON
         if ($booking->package->features && is_string($booking->package->features)) {
             $booking->package->features = json_decode($booking->package->features, true) ?: [];
         }
 
-        // HITUNG HARI DI CONTROLLER (bukan di Blade)
         $daysBeforeEvent = $this->calculateDaysBeforeEvent($booking->event_date);
-
-        // Hitung DP amount
         $dpAmount = $booking->total_amount * 0.5;
+        $canCancel = $daysBeforeEvent >= 30 && in_array($booking->status, ['pending', 'confirmed']);
 
-        // Tentukan apakah bisa cancel
-        $canCancel = $daysBeforeEvent >= 30 && $booking->status == 'pending';
+        // DEFINISI TIMELINE STEPS
+        $timelineSteps = [
+            [
+                'status_key' => 'pending',
+                'title' => 'Booking Dibuat',
+                'description' => 'Menunggu pembayaran DP 50%',
+                'date' => $booking->created_at->format('d/m H:i'),
+                'active_when' => ['pending', 'confirmed', 'in_progress', 'results_uploaded', 'pending_lunas', 'completed']
+            ],
+            [
+                'status_key' => 'confirmed',
+                'title' => 'DP Terverifikasi',
+                'description' => 'Jadwal terkunci',
+                'date' => $booking->dp_verified_at ? $booking->dp_verified_at->format('d/m H:i') : '-',
+                'active_when' => ['confirmed', 'in_progress', 'results_uploaded', 'pending_lunas', 'completed']
+            ],
+            [
+                'status_key' => 'in_progress',
+                'title' => 'Acara Berlangsung',
+                'description' => 'Sesi pemotretan',
+                'date' => $booking->in_progress_at ? $booking->in_progress_at->format('d/m H:i') : '-',
+                'active_when' => ['in_progress', 'results_uploaded', 'pending_lunas', 'completed']
+            ],
+            [
+                'status_key' => 'results_uploaded',
+                'title' => 'Hasil Diupload',
+                'description' => 'Admin mengupload foto',
+                'date' => $booking->results_uploaded_at ? $booking->results_uploaded_at->format('d/m H:i') : '-',
+                'active_when' => ['results_uploaded', 'pending_lunas', 'completed']
+            ],
+            [
+                'status_key' => 'pending_lunas', // STEP BARU: Pelunasan
+                'title' => 'Pelunasan',
+                'description' => 'Menunggu verifikasi lunas',
+                'date' => $booking->remaining_uploaded_at ? $booking->remaining_uploaded_at->format('d/m H:i') : '-', // Gunakan remaining_uploaded_at
+                'active_when' => ['pending_lunas', 'completed']
+            ],
+            [
+                'status_key' => 'completed',
+                'title' => 'Selesai',
+                'description' => 'Siap didownload',
+                'date' => $booking->completed_at ? $booking->completed_at->format('d/m H:i') : '-',
+                'active_when' => ['completed']
+            ]
+        ];
 
-              $timelineSteps = [
-        [
-            'status' => 'pending',
-            'icon' => '📝',
-            'title' => 'Booking Dibuat',
-            'description' => 'Menunggu pembayaran DP 50%',
-            'date' => $booking->created_at->format('d/m H:i'),
-            'status_key' => 'pending'
-        ],
-        [
-            'status' => 'confirmed',
-            'icon' => '✅',
-            'title' => 'DP Terverifikasi',
-            'description' => 'Booking dikonfirmasi, jadwal terkunci',
-            'date' => $booking->dp_verified_at ? $booking->dp_verified_at->format('d/m H:i') : '-',
-            'status_key' => 'confirmed'
-        ],
-        [
-            'status' => 'in_progress',
-            'icon' => '🎬',
-            'title' => 'Acara Berlangsung',
-            'description' => 'Tim kami melakukan pemotretan',
-            'date' => $booking->in_progress_at ? $booking->in_progress_at->format('d/m H:i') : '-',
-            'status_key' => 'in_progress'
-        ],
-        [
-            'status' => 'results_uploaded',
-            'icon' => '📤',
-            'title' => 'Hasil Diupload',
-            'description' => 'Admin sudah mengupload hasil foto',
-            'date' => $booking->results_uploaded_at ? $booking->results_uploaded_at->format('d/m H:i') : '-',
-            'status_key' => 'results_uploaded'
-        ],
-        [
-            'status' => 'pending_lunas',
-            'icon' => '💰',
-            'title' => 'Menunggu Verifikasi Pelunasan',
-            'description' => 'Admin verifikasi pembayaran lunas',
-            'date' => $booking->pending_lunas_at ? $booking->pending_lunas_at->format('d/m H:i') : '-',
-            'status_key' => 'pending_lunas'
-        ],
-        [
-            'status' => 'completed',
-            'icon' => '✨',
-            'title' => 'Selesai',
-            'description' => 'Pelunasan diverifikasi, hasil bisa didownload',
-            'date' => $booking->completed_at ? $booking->completed_at->format('d/m H:i') : '-',
-            'status_key' => 'completed'
-        ]
-    ];
+        // LOGIKA PENENTUAN STATUS AKTIF (Bukan pakai index lagi, tapi in_array)
+        // Kita kirim $timelineSteps yang sudah diproses status aktifnya ke view
+        foreach ($timelineSteps as &$step) {
+            $step['is_active'] = in_array($booking->status, $step['active_when']);
 
-    // Hitung status index untuk timeline
-    $statusOrder = ['pending', 'confirmed', 'in_progress', 'results_uploaded', 'completed', 'cancelled'];
-    $currentStatusIndex = array_search($booking->status, $statusOrder);
+            // Khusus step "Pelunasan", jika status 'results_uploaded' tapi user sudah bayar lunas (completed), step ini juga harus aktif/terlewati
+            if ($step['status_key'] == 'pending_lunas' && $booking->status == 'completed') {
+                $step['is_active'] = true;
+            }
+        }
 
         return view('client.booking.show', compact(
-        'booking',
-        'daysBeforeEvent',
-        'dpAmount',
-        'canCancel',
-        'timelineSteps',
-        'currentStatusIndex'
-    ));
+            'booking',
+            'daysBeforeEvent',
+            'dpAmount',
+            'canCancel',
+            'timelineSteps'
+        ));
     }
 
-    /**
-     * Helper method untuk menghitung hari sebelum acara
-     */
+
     private function calculateDaysBeforeEvent($eventDate)
     {
         $event = \Carbon\Carbon::parse($eventDate)->startOfDay();
@@ -167,83 +214,83 @@ class BookingController extends Controller
     }
 
     public function uploadPayment(Request $request, Booking $booking)
-{
-    // Pastikan booking milik user yang login
-    if ($booking->user_id !== auth()->id()) {
-        return back()->with('error', 'Akses ditolak.');
+    {
+        // Pastikan booking milik user yang login
+        if ($booking->user_id !== auth()->id()) {
+            return back()->with('error', 'Akses ditolak.');
+        }
+
+        $request->validate([
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'payment_notes' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            if ($request->hasFile('payment_proof')) {
+                $path = $request->file('payment_proof')->store('payment-proofs', 'public');
+
+                $booking->update([
+                    'payment_proof' => $path,
+                    'payment_notes' => $request->payment_notes,
+                    'dp_uploaded_at' => now(), // ✅ TAMBAH INI
+                    'status' => 'pending',
+                ]);
+
+                return back()->with('success', '✅ Bukti DP berhasil diupload! Admin akan verifikasi.');
+            }
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Gagal mengupload bukti: ' . $e->getMessage());
+        }
+
+        return back()->with('error', '❌ Gagal mengupload bukti.');
     }
 
-    $request->validate([
-        'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-        'payment_notes' => 'nullable|string|max:500',
-    ]);
+    public function uploadRemainingPayment(Request $request, Booking $booking)
+    {
+        // Authorization check
+        if ($booking->user_id !== auth()->id()) {
+            abort(403);
+        }
 
-    try {
-        if ($request->hasFile('payment_proof')) {
-            $path = $request->file('payment_proof')->store('payment-proofs', 'public');
-            
+        // Allow untuk booking yang sudah ada hasilnya atau masih confirmed
+        $allowedStatuses = ['confirmed', 'results_uploaded', 'in_progress'];
+        if (!in_array($booking->status, $allowedStatuses) || $booking->remaining_amount <= 0) {
+            return back()->with('error', 'Tidak dapat mengupload bukti pelunasan.');
+        }
+
+        // Validation
+        $request->validate([
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'remaining_payment_notes' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Store payment proof
+            $path = $request->file('payment_proof')->store('remaining-payment-proofs', 'public');
+
+            // Update booking - PERBAIKAN DISINI
             $booking->update([
-                'payment_proof' => $path,
-                'payment_notes' => $request->payment_notes,
-                'dp_uploaded_at' => now(), // ✅ TAMBAH INI
-                'status' => 'pending',
+                'remaining_payment_proof' => $path,
+                'remaining_payment_notes' => $request->remaining_payment_notes,
+                'remaining_uploaded_at' => now(), // ✅ GANTI 'remaining_payment_uploaded_at' MENJADI 'remaining_uploaded_at'
+                'status' => 'pending_lunas',
             ]);
 
-            return back()->with('success', '✅ Bukti DP berhasil diupload! Admin akan verifikasi.');
+            // Log untuk debugging
+            \Log::info('Remaining payment uploaded', [
+                'booking_id' => $booking->id,
+                'notes' => $request->remaining_payment_notes,
+                'file_path' => $path,
+                'status' => 'pending_lunas'
+            ]);
+
+            return back()->with('success', '✅ Bukti pelunasan berhasil diupload. Menunggu verifikasi admin.');
+
+        } catch (\Exception $e) {
+            \Log::error('Error uploading remaining payment: ' . $e->getMessage());
+            return back()->with('error', '❌ Gagal mengupload bukti pelunasan: ' . $e->getMessage());
         }
-    } catch (\Exception $e) {
-        return back()->with('error', '❌ Gagal mengupload bukti: ' . $e->getMessage());
     }
-
-    return back()->with('error', '❌ Gagal mengupload bukti.');
-}
-
-public function uploadRemainingPayment(Request $request, Booking $booking)
-{
-    // Authorization check
-    if ($booking->user_id !== auth()->id()) {
-        abort(403);
-    }
-  
-    // Allow untuk booking yang sudah ada hasilnya atau masih confirmed
-    $allowedStatuses = ['confirmed', 'results_uploaded', 'in_progress'];
-    if (!in_array($booking->status, $allowedStatuses) || $booking->remaining_amount <= 0) {
-        return back()->with('error', 'Tidak dapat mengupload bukti pelunasan.');
-    }
-
-    // Validation
-    $request->validate([
-        'payment_proof' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        'remaining_payment_notes' => 'nullable|string|max:500',
-    ]);
-
-    try {
-        // Store payment proof
-        $path = $request->file('payment_proof')->store('remaining-payment-proofs', 'public');
-
-        // Update booking - PERBAIKAN DISINI
-        $booking->update([
-            'remaining_payment_proof' => $path,
-            'remaining_payment_notes' => $request->remaining_payment_notes,
-            'remaining_uploaded_at' => now(), // ✅ GANTI 'remaining_payment_uploaded_at' MENJADI 'remaining_uploaded_at'
-            'status' => 'pending_lunas',
-        ]);
-
-        // Log untuk debugging
-        \Log::info('Remaining payment uploaded', [
-            'booking_id' => $booking->id,
-            'notes' => $request->remaining_payment_notes,
-            'file_path' => $path,
-            'status' => 'pending_lunas'
-        ]);
-
-        return back()->with('success', '✅ Bukti pelunasan berhasil diupload. Menunggu verifikasi admin.');
-
-    } catch (\Exception $e) {
-        \Log::error('Error uploading remaining payment: ' . $e->getMessage());
-        return back()->with('error', '❌ Gagal mengupload bukti pelunasan: ' . $e->getMessage());
-    }
-}
 
     public function cancel(Request $request, Booking $booking)
     {
@@ -309,4 +356,6 @@ public function uploadRemainingPayment(Request $request, Booking $booking)
         return redirect()->route('client.dashboard')
             ->with('warning', 'Booking berhasil dibatalkan. DP 50% TIDAK DIKEMBALIKAN.');
     }
+
+
 }

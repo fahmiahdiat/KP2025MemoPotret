@@ -9,7 +9,9 @@
     <title>{{ config('app.name', 'Memo Potret') }}</title>
 
     <!-- CDN Flatpickr -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.min.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -25,81 +27,556 @@
 </head>
 
 <body class="font-sans antialiased">
-    <div class="min-h-screen bg-gray-100">
-        <!-- Navigation -->
-        <nav class="bg-white border-b border-gray-100 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <!-- Logo Section -->
-                    <div class="flex items-center">
-                        <!-- Logo -->
-                        <div class="shrink-0 flex items-center">
-                            <a href="{{ route('home') }}" class="flex items-center">
-                                <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
-                                <span class="ml-2 text-xl font-bold text-gray-800">Memo Potret</span>
+    @auth
+        @if(auth()->user()->isOwner() || auth()->user()->isAdmin())
+            <!-- SIDEBAR LAYOUT untuk Owner & Admin -->
+            <div class="min-h-screen bg-gray-50">
+                <!-- Sidebar Desktop -->
+                <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+                    <!-- Sidebar component -->
+                    <div class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
+                        <div class="flex h-auto shrink-0 items-center justify-center py-4"> {{-- Ubah h-16 jadi h-auto dan
+                            tambah padding --}}
+                            <a href="{{ auth()->user()->isOwner() ? route('owner.dashboard') : route('admin.dashboard') }}"
+                                class="flex flex-col items-center gap-2"> {{-- Gunakan flex-col agar badge ada di BAWAH logo
+                                --}}
+
+                                <x-application-logo class="block h-8 w-auto fill-current text-gray-800" />
+                                {{-- Ganti h-8 menjadi h-16 atau h-20 --}}
+
+                                @if(auth()->user()->isOwner())
+                                    <span
+                                        class="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+                                        Owner
+                                    </span>
+                                @else
+                                    <span
+                                        class="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full border border-indigo-200">
+                                        Admin
+                                    </span>
+                                @endif
                             </a>
                         </div>
 
-                        <!-- Navigation Links -->
-                        @auth
-                            @if(auth()->user()->isOwner())
-                                <!-- Navigation Links for OWNER -->
-                                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                    <x-nav-link href="{{ route('owner.dashboard') }}"
-                                        :active="request()->routeIs('owner.dashboard')">
-                                        {{ __('Dashboard') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('owner.reports.index') }}"
-                                        :active="request()->routeIs('owner.reports.*')">
-                                        {{ __('Laporan') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('owner.settings.index') }}"
-                                        :active="request()->routeIs('owner.settings.*')">
-                                        {{ __('Pengaturan') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('owner.users.index') }}"
-                                        :active="request()->routeIs('owner.users.*')">
-                                        {{ __('Kelola User') }}
-                                    </x-nav-link>
+                        <!-- Navigation -->
+                        <nav class="flex flex-1 flex-col">
+                            <ul role="list" class="flex flex-1 flex-col gap-y-7">
+                                <li>
+                                    <ul role="list" class="-mx-2 space-y-1">
+                                        @if(auth()->user()->isOwner())
+                                            <!-- OWNER MENU -->
+                                            <li>
+                                                <a href="{{ route('owner.dashboard') }}"
+                                                    class="{{ request()->routeIs('owner.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-tachometer-alt {{ request()->routeIs('owner.dashboard') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Dashboard
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{{ route('owner.reports.index') }}"
+                                                    class="{{ request()->routeIs('owner.reports.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-chart-bar {{ request()->routeIs('owner.reports.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Laporan
+                                                </a>
+
+                                                <!-- Submenu untuk laporan -->
+                                                <ul
+                                                    class="ml-6 mt-1 space-y-1 {{ request()->routeIs('owner.reports.*') ? 'block' : 'hidden' }}">
+                                                    <li>
+                                                        <a href="{{ route('owner.reports.financial') }}"
+                                                            class="{{ request()->routeIs('owner.reports.financial') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
+                                                            <i class="fas fa-money-bill-wave text-xs"></i> Keuangan
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('owner.reports.bookings') }}"
+                                                            class="{{ request()->routeIs('owner.reports.bookings') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
+                                                            <i class="fas fa-calendar-check text-xs"></i> Booking
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('owner.reports.packages') }}"
+                                                            class="{{ request()->routeIs('owner.reports.packages') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
+                                                            <i class="fas fa-box text-xs"></i> Paket
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('owner.reports.clients') }}"
+                                                            class="{{ request()->routeIs('owner.reports.clients') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
+                                                            <i class="fas fa-users text-xs"></i> Klien
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <a href="{{ route('owner.users.index') }}"
+                                                    class="{{ request()->routeIs('owner.users.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-users {{ request()->routeIs('owner.users.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Kelola User
+                                                </a>
+                                            </li>
+                                        @elseif(auth()->user()->isAdmin())
+                                            <!-- ADMIN MENU -->
+                                            <li>
+                                                <a href="{{ route('admin.dashboard') }}"
+                                                    class="{{ request()->routeIs('admin.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-tachometer-alt {{ request()->routeIs('admin.dashboard') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Dashboard
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{{ route('admin.bookings.index') }}"
+                                                    class="{{ request()->routeIs('admin.bookings.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-calendar-check {{ request()->routeIs('admin.bookings.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Booking
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{{ route('admin.packages.index') }}"
+                                                    class="{{ request()->routeIs('admin.packages.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-box {{ request()->routeIs('admin.packages.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Paket
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a href="{{ route('admin.calendar') }}"
+                                                    class="{{ request()->routeIs('admin.calendar') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                    <i
+                                                        class="fas fa-calendar-alt {{ request()->routeIs('admin.calendar') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                    Kalender
+                                                </a>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </li>
+
+                                <li class="mt-auto">
+                                    <!-- User Profile -->
+                                    <div
+                                        class="flex items-center gap-x-4 px-2 py-3 text-sm font-semibold leading-6 text-gray-900 hover:bg-gray-50 rounded-md">
+                                        <div class="flex items-center">
+                                            <div
+                                                class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                                {{ substr(Auth::user()->name, 0, 1) }}
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="font-medium">{{ Auth::user()->name }}</div>
+                                                <div class="text-xs text-gray-500">{{ Auth::user()->email }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Logout -->
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit"
+                                            class="w-full flex items-center gap-x-3 px-2 py-2 text-sm font-semibold leading-6 text-red-600 hover:bg-red-50 rounded-md mt-2">
+                                            <i class="fas fa-sign-out-alt mt-0.5 h-5 w-5 shrink-0"></i>
+                                            Keluar
+                                        </button>
+                                    </form>
+
+                                    <!-- Back to Home -->
+                                    <a href="{{ route('home') }}"
+                                        class="flex items-center gap-x-3 px-2 py-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 rounded-md mt-1">
+                                        <i class="fas fa-home mt-0.5 h-5 w-5 shrink-0"></i>
+                                        Kembali ke Beranda
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Main Content Area -->
+                <div class="lg:pl-64">
+                    <!-- Mobile Top Bar -->
+                    <div
+                        class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 lg:hidden">
+                        <button type="button" class="-m-2.5 p-2.5 text-gray-700 lg:hidden" onclick="toggleMobileSidebar()">
+                            <span class="sr-only">Open sidebar</span>
+                            <i class="fas fa-bars h-6 w-6" aria-hidden="true"></i>
+                        </button>
+
+                        <!-- Logo Mobile -->
+                        <div class="flex flex-1 items-center justify-end gap-x-4">
+                            <a href="{{ auth()->user()->isOwner() ? route('owner.dashboard') : route('admin.dashboard') }}"
+                                class="flex items-center">
+                                <x-application-logo class="block h-8 w-auto fill-current text-gray-800" />
+                            </a>
+                        </div>
+
+                        <!-- User Menu Mobile -->
+                        <div class="flex items-center gap-x-4">
+                            <div class="relative">
+                                <button type="button" class="-m-1.5 flex items-center p-1.5" onclick="toggleUserMenu()">
+                                    <span class="sr-only">Open user menu</span>
+                                    <div
+                                        class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                                        {{ substr(Auth::user()->name, 0, 1) }}
+                                    </div>
+                                </button>
+
+                                <!-- Dropdown Menu Mobile -->
+                                <div id="userMenuMobile"
+                                    class="hidden absolute right-0 top-full z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <div class="px-4 py-3 border-b">
+                                        <div class="font-medium">{{ Auth::user()->name }}</div>
+                                        <div class="text-xs text-gray-500">{{ Auth::user()->email }}</div>
+                                    </div>
+                                    <a href="{{ route('home') }}"
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i class="fas fa-home mr-2"></i>Beranda
+                                    </a>
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit"
+                                            class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                            <i class="fas fa-sign-out-alt mr-2"></i>Keluar
+                                        </button>
+                                    </form>
                                 </div>
-                            @elseif(auth()->user()->isAdmin())
-                                <!-- Navigation Links for ADMIN -->
-                                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                    <x-nav-link href="{{ route('admin.dashboard') }}"
-                                        :active="request()->routeIs('admin.dashboard')">
-                                        {{ __('Dashboard') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('admin.bookings.index') }}"
-                                        :active="request()->routeIs('admin.bookings.*')">
-                                        {{ __('Booking') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('admin.packages.index') }}"
-                                        :active="request()->routeIs('admin.packages.*')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Sidebar (Hidden by default) -->
+                    <div id="mobileSidebar" class="fixed inset-0 z-50 lg:hidden hidden">
+                        <!-- Backdrop -->
+                        <div class="fixed inset-0 bg-gray-900/80" onclick="toggleMobileSidebar()"></div>
+
+                        <!-- Sidebar Panel -->
+                        <div class="relative flex flex-1 flex-col bg-white w-full max-w-xs">
+                            <!-- Close button -->
+                            <div class="absolute top-0 right-0 -mr-12 pt-4">
+                                <button type="button"
+                                    class="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-white"
+                                    onclick="toggleMobileSidebar()">
+                                    <span class="sr-only">Close sidebar</span>
+                                    <i class="fas fa-times h-6 w-6 text-white" aria-hidden="true"></i>
+                                </button>
+                            </div>
+
+                            <!-- Mobile Sidebar Content -->
+                            <div class="flex grow flex-col gap-y-5 overflow-y-auto px-6 pb-4">
+                                <!-- Logo -->
+                                <div class="flex h-16 shrink-0 items-center">
+                                    <a href="{{ auth()->user()->isOwner() ? route('owner.dashboard') : route('admin.dashboard') }}"
+                                        class="flex items-center">
+                                        <x-application-logo class="block h-8 w-auto fill-current text-gray-800" />
+                                    </a>
+                                </div>
+
+                                <!-- Navigation Mobile -->
+                                <nav class="flex flex-1 flex-col">
+                                    <ul role="list" class="flex flex-1 flex-col gap-y-7">
+                                        <li>
+                                            <ul role="list" class="-mx-2 space-y-1">
+                                                @if(auth()->user()->isOwner())
+                                                    <!-- OWNER MENU MOBILE -->
+                                                    <li>
+                                                        <a href="{{ route('owner.dashboard') }}"
+                                                            class="{{ request()->routeIs('owner.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-tachometer-alt {{ request()->routeIs('owner.dashboard') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Dashboard
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('owner.reports.index') }}"
+                                                            class="{{ request()->routeIs('owner.reports.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-chart-bar {{ request()->routeIs('owner.reports.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Laporan
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('owner.users.index') }}"
+                                                            class="{{ request()->routeIs('owner.users.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-users {{ request()->routeIs('owner.users.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Kelola User
+                                                        </a>
+                                                    </li>
+                                                @elseif(auth()->user()->isAdmin())
+                                                    <!-- ADMIN MENU MOBILE -->
+                                                    <li>
+                                                        <a href="{{ route('admin.dashboard') }}"
+                                                            class="{{ request()->routeIs('admin.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-tachometer-alt {{ request()->routeIs('admin.dashboard') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Dashboard
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('admin.bookings.index') }}"
+                                                            class="{{ request()->routeIs('admin.bookings.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-calendar-check {{ request()->routeIs('admin.bookings.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Booking
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('admin.packages.index') }}"
+                                                            class="{{ request()->routeIs('admin.packages.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-box {{ request()->routeIs('admin.packages.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Paket
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="{{ route('admin.calendar') }}"
+                                                            class="{{ request()->routeIs('admin.calendar') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
+                                                            <i
+                                                                class="fas fa-calendar-alt {{ request()->routeIs('admin.calendar') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                            Kalender
+                                                        </a>
+                                                    </li>
+                                                @endif
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Page Content -->
+                    <main class="py-8">
+                        <div class="px-4 sm:px-6 lg:px-8">
+                            {{ $slot }}
+                        </div>
+                    </main>
+                </div>
+            </div>
+        @else
+            <!-- NAVBAR LAYOUT untuk Client & Guest -->
+            <div class="min-h-screen bg-gray-100">
+                <nav x-data="{ open: false }" class="bg-white border-b border-gray-100 shadow-sm">
+                    <!-- Existing navbar code for Client/Guest -->
+                    <!-- ... KEEP THE EXISTING NAVBAR CODE FOR CLIENT/GUEST ... -->
+                    {{-- Keep the original navbar code for Client and Guest users --}}
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between h-16">
+                            <!-- Logo Section -->
+                            <div class="flex items-center">
+                                <!-- Logo -->
+                                <div class="shrink-0 flex items-center">
+                                    <a href="{{ route('home') }}" class="flex items-center">
+                                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+                                    </a>
+                                </div>
+
+                                <!-- Navigation Links -->
+                                @if(auth()->user()->isClient())
+                                    <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                        <x-nav-link href="{{ route('client.dashboard') }}"
+                                            :active="request()->routeIs('client.dashboard')">
+                                            {{ __('Dashboard') }}
+                                        </x-nav-link>
+
+                                        <x-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
+                                            {{ __('Paket') }}
+                                        </x-nav-link>
+                                    </div>
+                                @else
+                                    <!-- Navigation Links for GUEST -->
+                                    <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                        <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
+                                            {{ __('Beranda') }}
+                                        </x-nav-link>
+                                        <x-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
+                                            {{ __('Paket') }}
+                                        </x-nav-link>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Right Side Section -->
+                            <div class="flex items-center">
+                                @auth
+                                    <!-- User Dropdown for CLIENT -->
+                                    <div class="hidden sm:flex sm:items-center">
+                                        <x-dropdown align="right" width="48">
+                                            <x-slot name="trigger">
+                                                <button
+                                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
+                                                    <div class="flex items-center">
+                                                        <i class="fas fa-user-circle mr-2"></i>
+                                                        <span>{{ Auth::user()->name }}</span>
+                                                        <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fill-rule="evenodd"
+                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                                clip-rule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </button>
+                                            </x-slot>
+
+                                            <x-slot name="content">
+                                                <x-dropdown-link href="{{ route('client.dashboard') }}">
+                                                    <i class="fas fa-tachometer-alt mr-2"></i>
+                                                    {{ __('Dashboard Client') }}
+                                                </x-dropdown-link>
+
+                                                <div class="border-t border-gray-200"></div>
+
+                                                <!-- Authentication -->
+                                                <form method="POST" action="{{ route('logout') }}">
+                                                    @csrf
+                                                    <x-dropdown-link href="{{ route('logout') }}" onclick="event.preventDefault();
+                                                                                            this.closest('form').submit();"
+                                                        class="text-red-600 hover:text-red-700">
+                                                        <i class="fas fa-sign-out-alt mr-2"></i>
+                                                        {{ __('Log Out') }}
+                                                    </x-dropdown-link>
+                                                </form>
+                                            </x-slot>
+                                        </x-dropdown>
+                                    </div>
+                                @else
+                                    <!-- Separate Login and Register Buttons for Guests -->
+                                    <div class="hidden sm:flex sm:items-center space-x-4">
+                                        <!-- Login Button -->
+                                        <button data-auth-modal data-auth-tab="login"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
+                                            <i class="fas fa-sign-in-alt mr-2"></i>
+                                            {{ __('Login') }}
+                                        </button>
+
+                                        <!-- Register Button -->
+                                        <button data-auth-modal data-auth-tab="register"
+                                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
+                                            <i class="fas fa-user-plus mr-2"></i>
+                                            {{ __('Daftar') }}
+                                        </button>
+                                    </div>
+                                @endauth
+
+                                <!-- Hamburger Menu Button for Mobile -->
+                                <div class="flex items-center sm:hidden ml-2">
+                                    <button @click="open = ! open"
+                                        class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
+                                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                            <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex"
+                                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 6h16M4 12h16M4 18h16" />
+                                            <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden"
+                                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Menu -->
+                        <div :class="{'block': open, 'hidden': ! open}" class="sm:hidden">
+                            <div class="pt-2 pb-3 space-y-1">
+                                @auth
+                                    @if(auth()->user()->isClient())
+                                        <x-responsive-nav-link href="{{ route('client.dashboard') }}"
+                                            :active="request()->routeIs('client.*')">
+                                            <i class="fas fa-tachometer-alt mr-3"></i>
+                                            {{ __('Dashboard') }}
+                                        </x-responsive-nav-link>
+                                        <x-responsive-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
+                                            <i class="fas fa-box mr-3"></i>
+                                            {{ __('Paket') }}
+                                        </x-responsive-nav-link>
+                                    @endif
+                                @else
+                                    <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
+                                        <i class="fas fa-home mr-3"></i>
+                                        {{ __('Beranda') }}
+                                    </x-responsive-nav-link>
+                                    <x-responsive-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
+                                        <i class="fas fa-box mr-3"></i>
                                         {{ __('Paket') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('admin.calendar') }}"
-                                        :active="request()->routeIs('admin.calendar')">
-                                        {{ __('Kalender') }}
-                                    </x-nav-link>
+                                    </x-responsive-nav-link>
+                                @endauth
+                            </div>
+
+                            <!-- Auth Section for Mobile -->
+                            @auth
+                                <div class="pt-4 pb-1 border-t border-gray-200 bg-gray-50">
+                                    <div class="px-4 py-3">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-user-circle text-2xl text-gray-400"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
+                                                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 space-y-1">
+                                        <x-responsive-nav-link href="{{ route('client.dashboard') }}">
+                                            <i class="fas fa-tachometer-alt mr-3"></i>
+                                            {{ __('Dashboard Client') }}
+                                        </x-responsive-nav-link>
+
+                                        <div class="border-t border-gray-200"></div>
+
+                                        <!-- Authentication -->
+                                        <form method="POST" action="{{ route('logout') }}">
+                                            @csrf
+                                            <x-responsive-nav-link href="{{ route('logout') }}" onclick="event.preventDefault();
+                                                                                    this.closest('form').submit();"
+                                                class="text-red-600 hover:text-red-700">
+                                                <i class="fas fa-sign-out-alt mr-3"></i>
+                                                {{ __('Log Out') }}
+                                            </x-responsive-nav-link>
+                                        </form>
+                                    </div>
                                 </div>
-                            @elseif(auth()->user()->isClient())
-                                <!-- Navigation Links for CLIENT -->
-                                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                    <x-nav-link href="{{ route('client.dashboard') }}"
-                                        :active="request()->routeIs('client.dashboard')">
-                                        {{ __('Dashboard') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('client.bookings.create') }}"
-                                        :active="request()->routeIs('client.bookings.create')">
-                                        {{ __('Booking Baru') }}
-                                    </x-nav-link>
-                                    <x-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
-                                        {{ __('Paket') }}
-                                    </x-nav-link>
-                                </div>
-                            @endif
-                        @else
-                            <!-- Navigation Links for GUEST -->
+                            @else
+                                <!-- Mobile Login/Register Buttons -->
+                                <button data-auth-modal data-auth-tab="login"
+                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    {{ __('Login') }}
+                                </button>
+                                <button data-auth-modal data-auth-tab="register"
+                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="fas fa-user-plus mr-2"></i>
+                                    {{ __('Daftar') }}
+                                </button>
+                            @endauth
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Page Content -->
+                <main>
+                    {{ $slot }}
+                </main>
+            </div>
+        @endif
+    @else
+        <!-- NAVBAR LAYOUT untuk Guest (Not logged in) -->
+        <div class="min-h-screen bg-gray-100">
+            <nav x-data="{ open: false }" class="bg-white border-b border-gray-100 shadow-sm">
+                <!-- Existing navbar code for Guest -->
+                <!-- ... KEEP THE EXISTING NAVBAR CODE FOR GUEST ... -->
+                {{-- Same as above guest section --}}
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between h-16">
+                        <div class="flex items-center">
+                            <div class="shrink-0 flex items-center">
+                                <a href="{{ route('home') }}" class="flex items-center">
+                                    <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+                                </a>
+                            </div>
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <x-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
                                     {{ __('Beranda') }}
@@ -108,155 +585,37 @@
                                     {{ __('Paket') }}
                                 </x-nav-link>
                             </div>
-                        @endauth
-                    </div>
-
-                    <!-- Right Side Section -->
-                    <div class="flex items-center">
-                        <!-- Auth Links / User Dropdown -->
-                        @auth
-                            <!-- User Dropdown for Authenticated Users -->
-                            <div class="hidden sm:flex sm:items-center">
-                                <x-dropdown align="right" width="48">
-                                    <x-slot name="trigger">
-                                        <button
-                                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-user-circle mr-2"></i>
-                                                <span>{{ Auth::user()->name }}</span>
-                                                <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        </button>
-                                    </x-slot>
-
-                                    <x-slot name="content">
-                                        @if(auth()->user()->isClient())
-                                            <x-dropdown-link href="{{ route('client.dashboard') }}">
-                                                <i class="fas fa-tachometer-alt mr-2"></i>
-                                                {{ __('Dashboard Client') }}
-                                            </x-dropdown-link>
-                                        @endif
-
-                                        @if(auth()->user()->isAdmin())
-                                            <x-dropdown-link href="{{ route('admin.dashboard') }}">
-                                                <i class="fas fa-cog mr-2"></i>
-                                                {{ __('Dashboard Admin') }}
-                                            </x-dropdown-link>
-                                        @endif
-
-                                        @if(auth()->user()->isOwner())
-                                            <x-dropdown-link href="{{ route('owner.dashboard') }}">
-                                                <i class="fas fa-crown mr-2"></i>
-                                                {{ __('Dashboard Owner') }}
-                                            </x-dropdown-link>
-                                        @endif
-
-                                        <div class="border-t border-gray-200"></div>
-
-                                        <!-- Authentication -->
-                                        <form method="POST" action="{{ route('logout') }}">
-                                            @csrf
-                                            <x-dropdown-link href="{{ route('logout') }}" onclick="event.preventDefault();
-                                                        this.closest('form').submit();"
-                                                class="text-red-600 hover:text-red-700">
-                                                <i class="fas fa-sign-out-alt mr-2"></i>
-                                                {{ __('Log Out') }}
-                                            </x-dropdown-link>
-                                        </form>
-                                    </x-slot>
-                                </x-dropdown>
-                            </div>
-                        @else
-                            <!-- Separate Login and Register Buttons for Guests -->
+                        </div>
+                        <div class="flex items-center">
                             <div class="hidden sm:flex sm:items-center space-x-4">
-                                <!-- Login Button -->
-                                <a href="{{ route('login') }}"
+                                <button data-auth-modal data-auth-tab="login"
                                     class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
                                     <i class="fas fa-sign-in-alt mr-2"></i>
                                     {{ __('Login') }}
-                                </a>
-
-                                <!-- Register Button (same outline style as login) -->
-                                <a href="{{ route('register') }}"
+                                </button>
+                                <button data-auth-modal data-auth-tab="register"
                                     class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
                                     <i class="fas fa-user-plus mr-2"></i>
                                     {{ __('Daftar') }}
-                                </a>
+                                </button>
                             </div>
-                        @endauth
-
-                        <!-- Hamburger Menu Button for Mobile -->
-                        <div class="flex items-center sm:hidden ml-2">
-                            <button @click="open = ! open"
-                                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                    <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex"
-                                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16" />
-                                    <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden"
-                                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <div class="flex items-center sm:hidden ml-2">
+                                <button @click="open = ! open"
+                                    class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
+                                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex"
+                                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 6h16M4 12h16M4 18h16" />
+                                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden"
+                                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Mobile Menu -->
-                <div :class="{'block': open, 'hidden': ! open}" class="sm:hidden">
-                    <div class="pt-2 pb-3 space-y-1">
-                        <!-- Navigation Links for Mobile -->
-                        @auth
-                            @if(auth()->user()->isClient())
-                                <x-responsive-nav-link href="{{ route('client.dashboard') }}"
-                                    :active="request()->routeIs('client.*')">
-                                    <i class="fas fa-tachometer-alt mr-3"></i>
-                                    {{ __('Dashboard') }}
-                                </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('client.bookings.create') }}"
-                                    :active="request()->routeIs('client.bookings.create')">
-                                    <i class="fas fa-calendar-plus mr-3"></i>
-                                    {{ __('Booking Baru') }}
-                                </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
-                                    <i class="fas fa-box mr-3"></i>
-                                    {{ __('Paket') }}
-                                </x-responsive-nav-link>
-                            @endif
-
-                            @if(auth()->user()->isAdmin())
-                                <x-responsive-nav-link href="{{ route('admin.dashboard') }}"
-                                    :active="request()->routeIs('admin.*')">
-                                    <i class="fas fa-cog mr-3"></i>
-                                    {{ __('Admin Dashboard') }}
-                                </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('admin.bookings.index') }}">
-                                    <i class="fas fa-calendar mr-3"></i>
-                                    {{ __('Booking') }}
-                                </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('admin.packages.index') }}">
-                                    <i class="fas fa-boxes mr-3"></i>
-                                    {{ __('Paket') }}
-                                </x-responsive-nav-link>
-                            @endif
-
-                            @if(auth()->user()->isOwner())
-                                <x-responsive-nav-link href="{{ route('owner.dashboard') }}"
-                                    :active="request()->routeIs('owner.*')">
-                                    <i class="fas fa-crown mr-3"></i>
-                                    {{ __('Owner Dashboard') }}
-                                </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('owner.reports.index') }}">
-                                    <i class="fas fa-chart-bar mr-3"></i>
-                                    {{ __('Laporan') }}
-                                </x-responsive-nav-link>
-                            @endif
-                        @else
+                    <div :class="{'block': open, 'hidden': ! open}" class="sm:hidden">
+                        <div class="pt-2 pb-3 space-y-1">
                             <x-responsive-nav-link href="{{ route('home') }}" :active="request()->routeIs('home')">
                                 <i class="fas fa-home mr-3"></i>
                                 {{ __('Beranda') }}
@@ -265,94 +624,153 @@
                                 <i class="fas fa-box mr-3"></i>
                                 {{ __('Paket') }}
                             </x-responsive-nav-link>
-                        @endauth
+                        </div>
+                        <button data-auth-modal data-auth-tab="login"
+                            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            {{ __('Login') }}
+                        </button>
+                        <button data-auth-modal data-auth-tab="register"
+                            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            {{ __('Daftar') }}
+                        </button>
                     </div>
-
-                    <!-- Auth Section for Mobile -->
-                    @auth
-                        <div class="pt-4 pb-1 border-t border-gray-200 bg-gray-50">
-                            <div class="px-4 py-3">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-user-circle text-2xl text-gray-400"></i>
-                                    </div>
-                                    <div class="ml-3">
-                                        <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                                        <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-3 space-y-1">
-                                @if(auth()->user()->isClient())
-                                    <x-responsive-nav-link href="{{ route('client.dashboard') }}">
-                                        <i class="fas fa-tachometer-alt mr-3"></i>
-                                        {{ __('Dashboard Client') }}
-                                    </x-responsive-nav-link>
-                                @endif
-
-                                @if(auth()->user()->isAdmin())
-                                    <x-responsive-nav-link href="{{ route('admin.dashboard') }}">
-                                        <i class="fas fa-cog mr-3"></i>
-                                        {{ __('Dashboard Admin') }}
-                                    </x-responsive-nav-link>
-                                @endif
-
-                                @if(auth()->user()->isOwner())
-                                    <x-responsive-nav-link href="{{ route('owner.dashboard') }}">
-                                        <i class="fas fa-crown mr-3"></i>
-                                        {{ __('Dashboard Owner') }}
-                                    </x-responsive-nav-link>
-                                @endif
-
-                                <div class="border-t border-gray-200"></div>
-
-                                <!-- Authentication -->
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <x-responsive-nav-link href="{{ route('logout') }}" onclick="event.preventDefault();
-                                                this.closest('form').submit();" class="text-red-600 hover:text-red-700">
-                                        <i class="fas fa-sign-out-alt mr-3"></i>
-                                        {{ __('Log Out') }}
-                                    </x-responsive-nav-link>
-                                </form>
-                            </div>
-                        </div>
-                    @else
-                        <!-- Mobile Login/Register Buttons -->
-                        <div class="pt-4 pb-3 border-t border-gray-200 bg-gray-50">
-                            <div class="px-4 py-3 space-y-3">
-                                <!-- Login Button Mobile -->
-                                <a href="{{ route('login') }}"
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
-                                    <i class="fas fa-sign-in-alt mr-2"></i>
-                                    {{ __('Login') }}
-                                </a>
-
-                                <!-- Register Button Mobile (same style as login) -->
-                                <a href="{{ route('register') }}"
-                                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150">
-                                    <i class="fas fa-user-plus mr-2"></i>
-                                    {{ __('Daftar') }}
-                                </a>
-                            </div>
-                        </div>
-                    @endauth
                 </div>
-            </div>
-        </nav>
+            </nav>
+            <main>
+                {{ $slot }}
+            </main>
+        </div>
+    @endauth
 
-        <!-- Page Content -->
-        <main>
-            {{ $slot }}
-        </main>
-    </div>
+    <script>
+        window.bookedDates = @json($bookedDates ?? []);
 
-    <!-- Scripts di bagian bawah body -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+        // Fungsi untuk sidebar mobile
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            if (sidebar.classList.contains('hidden')) {
+                sidebar.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            } else {
+                sidebar.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
 
+        // Fungsi untuk user menu mobile
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenuMobile');
+            menu.classList.toggle('hidden');
+        }
+
+        // Close user menu when clicking outside
+        document.addEventListener('click', function (event) {
+            const userMenu = document.getElementById('userMenuMobile');
+            const userButton = document.querySelector('[onclick="toggleUserMenu()"]');
+
+            if (userMenu && !userMenu.classList.contains('hidden')) {
+                if (!userMenu.contains(event.target) && !userButton.contains(event.target)) {
+                    userMenu.classList.add('hidden');
+                }
+            }
+        });
+
+        // Fungsi untuk menampilkan modal auth (existing)
+        function showAuthModal(activeTab = 'login') {
+            const modal = document.getElementById('authModal');
+            const backdrop = document.getElementById('authModalBackdrop');
+
+            if (modal && backdrop) {
+                modal.classList.remove('hidden');
+                backdrop.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+
+                // Set active tab
+                switchTab(activeTab);
+            }
+        }
+
+        function hideAuthModal() {
+            const modal = document.getElementById('authModal');
+            const backdrop = document.getElementById('authModalBackdrop');
+
+            if (modal && backdrop) {
+                modal.classList.add('hidden');
+                backdrop.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        function switchTab(tab) {
+            const loginTab = document.getElementById('loginTab');
+            const registerTab = document.getElementById('registerTab');
+            const loginContent = document.getElementById('loginContent');
+            const registerContent = document.getElementById('registerContent');
+            const switchToRegister = document.getElementById('switchToRegister');
+            const switchToLogin = document.getElementById('switchToLogin');
+
+            if (tab === 'login') {
+                loginTab.classList.add('border-indigo-600', 'text-indigo-600');
+                loginTab.classList.remove('border-transparent', 'text-gray-500');
+                registerTab.classList.add('border-transparent', 'text-gray-500');
+                registerTab.classList.remove('border-indigo-600', 'text-indigo-600');
+
+                loginContent.classList.remove('hidden');
+                registerContent.classList.add('hidden');
+
+                switchToRegister.classList.remove('hidden');
+                switchToLogin.classList.add('hidden');
+            } else {
+                registerTab.classList.add('border-indigo-600', 'text-indigo-600');
+                registerTab.classList.remove('border-transparent', 'text-gray-500');
+                loginTab.classList.add('border-transparent', 'text-gray-500');
+                loginTab.classList.remove('border-indigo-600', 'text-indigo-600');
+
+                registerContent.classList.remove('hidden');
+                loginContent.classList.add('hidden');
+
+                switchToLogin.classList.remove('hidden');
+                switchToRegister.classList.add('hidden');
+            }
+        }
+
+        // Event Listeners saat DOM siap
+        document.addEventListener('DOMContentLoaded', function () {
+            // Open modal buttons
+            document.querySelectorAll('[data-auth-modal]').forEach(button => {
+                button.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const tab = this.getAttribute('data-auth-tab') || 'login';
+                    showAuthModal(tab);
+                });
+            });
+
+            // Close modal
+            document.getElementById('closeAuthModal')?.addEventListener('click', hideAuthModal);
+            document.getElementById('authModalBackdrop')?.addEventListener('click', hideAuthModal);
+
+            // Switch tabs
+            document.getElementById('loginTab')?.addEventListener('click', () => switchTab('login'));
+            document.getElementById('registerTab')?.addEventListener('click', () => switchTab('register'));
+            document.querySelector('#switchToRegister button')?.addEventListener('click', () => switchTab('register'));
+            document.querySelector('#switchToLogin button')?.addEventListener('click', () => switchTab('login'));
+
+            // Escape key to close
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideAuthModal();
+                    const sidebar = document.getElementById('mobileSidebar');
+                    if (sidebar && !sidebar.classList.contains('hidden')) {
+                        toggleMobileSidebar();
+                    }
+                }
+            });
+        });
+    </script>
     @stack('scripts')
+    @include('components.auth-modal')
 </body>
 
 </html>

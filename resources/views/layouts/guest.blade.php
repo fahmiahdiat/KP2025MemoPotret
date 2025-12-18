@@ -38,7 +38,6 @@
                         <div class="shrink-0 flex items-center">
                             <a href="{{ route('home') }}" class="flex items-center">
                                 <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
-                                <span class="ml-2 text-xl font-bold text-gray-800">Memo Potret</span>
                             </a>
                         </div>
 
@@ -55,10 +54,10 @@
                                         :active="request()->routeIs('owner.reports.*')">
                                         {{ __('Laporan') }}
                                     </x-nav-link>
-                                    <x-nav-link href="{{ route('owner.settings.index') }}"
+                                    {{-- <x-nav-link href="{{ route('owner.settings.index') }}"
                                         :active="request()->routeIs('owner.settings.*')">
                                         {{ __('Pengaturan') }}
-                                    </x-nav-link>
+                                    </x-nav-link> --}}
                                     <x-nav-link href="{{ route('owner.users.index') }}"
                                         :active="request()->routeIs('owner.users.*')">
                                         {{ __('Kelola User') }}
@@ -91,10 +90,7 @@
                                         :active="request()->routeIs('client.dashboard')">
                                         {{ __('Dashboard') }}
                                     </x-nav-link>
-                                    <x-nav-link href="{{ route('client.bookings.create') }}"
-                                        :active="request()->routeIs('client.bookings.create')">
-                                        {{ __('Booking Baru') }}
-                                    </x-nav-link>
+
                                     <x-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
                                         {{ __('Paket') }}
                                     </x-nav-link>
@@ -164,7 +160,7 @@
                                         <form method="POST" action="{{ route('logout') }}">
                                             @csrf
                                             <x-dropdown-link href="{{ route('logout') }}" onclick="event.preventDefault();
-                                                            this.closest('form').submit();"
+                                                                this.closest('form').submit();"
                                                 class="text-red-600 hover:text-red-700">
                                                 <i class="fas fa-sign-out-alt mr-2"></i>
                                                 {{ __('Log Out') }}
@@ -220,8 +216,7 @@
                                     <i class="fas fa-tachometer-alt mr-3"></i>
                                     {{ __('Dashboard') }}
                                 </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('client.bookings.create') }}"
-                                    :active="request()->routeIs('client.bookings.create')">
+                                <x-responsive-nav-link href="{{ route('packages') }}" :active="request()->routeIs('packages')">
                                     <i class="fas fa-calendar-plus mr-3"></i>
                                     {{ __('Booking Baru') }}
                                 </x-responsive-nav-link>
@@ -313,7 +308,7 @@
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <x-responsive-nav-link href="{{ route('logout') }}" onclick="event.preventDefault();
-                                                    this.closest('form').submit();"
+                                                        this.closest('form').submit();"
                                         class="text-red-600 hover:text-red-700">
                                         <i class="fas fa-sign-out-alt mr-3"></i>
                                         {{ __('Log Out') }}
@@ -324,15 +319,15 @@
                     @else
                         <!-- Mobile Login/Register Buttons -->
                         <button data-auth-modal data-auth-tab="login"
-    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-    <i class="fas fa-sign-in-alt mr-2"></i>
-    {{ __('Login') }}
-</button>
-<button data-auth-modal data-auth-tab="register"
-    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-    <i class="fas fa-user-plus mr-2"></i>
-    {{ __('Daftar') }}
-</button>
+                            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            {{ __('Login') }}
+                        </button>
+                        <button data-auth-modal data-auth-tab="register"
+                            class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            {{ __('Daftar') }}
+                        </button>
                     @endauth
                 </div>
             </div>

@@ -1,118 +1,139 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="text-xl font-semibold text-gray-800">Laporan</h2>
-            <a href="{{ route('owner.reports.export', request()->all()) }}" class="btn-primary">Export Excel</a>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 leading-tight">Dashboard Laporan</h2>
+                <p class="text-sm text-gray-500 mt-1">Pilih jenis laporan yang ingin dilihat</p>
+            </div>
         </div>
     </x-slot>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <!-- Filter -->
-            <div class="card mb-6">
-                <form method="GET" class="grid md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm mb-1">Dari</label>
-                        <input type="date" name="start_date" value="{{ $startDate }}" class="w-full border rounded px-3 py-2">
+    <div class="py-8 bg-gray-50 min-h-screen">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Report Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Financial Report Card -->
+                <a href="{{ route('owner.reports.financial') }}" 
+                   class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="p-2 bg-green-50 rounded-lg text-green-600 mb-4 inline-block">
+                                <i class="fas fa-money-bill-wave text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-lg text-gray-900 mb-2">Laporan Keuangan</h3>
+                            <p class="text-sm text-gray-500">Pendapatan, DP, sisa tagihan</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 transition-colors mt-1"></i>
                     </div>
-                    <div>
-                        <label class="block text-sm mb-1">Sampai</label>
-                        <input type="date" name="end_date" value="{{ $endDate }}" class="w-full border rounded px-3 py-2">
+                </a>
+
+                <!-- Booking Report Card -->
+                <a href="{{ route('owner.reports.bookings') }}" 
+                   class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="p-2 bg-blue-50 rounded-lg text-blue-600 mb-4 inline-block">
+                                <i class="fas fa-calendar-check text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-lg text-gray-900 mb-2">Laporan Booking</h3>
+                            <p class="text-sm text-gray-500">Statistik & conversion rate</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 transition-colors mt-1"></i>
                     </div>
-                    <div class="flex items-end">
-                        <button type="submit" class="btn-primary w-full">Filter</button>
+                </a>
+
+                <!-- Package Report Card -->
+                <a href="{{ route('owner.reports.packages') }}" 
+                   class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="p-2 bg-amber-50 rounded-lg text-amber-600 mb-4 inline-block">
+                                <i class="fas fa-box text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-lg text-gray-900 mb-2">Laporan Paket</h3>
+                            <p class="text-sm text-gray-500">Performance & trends</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 transition-colors mt-1"></i>
                     </div>
-                </form>
+                </a>
+
+                <!-- Client Report Card -->
+                <a href="{{ route('owner.reports.clients') }}" 
+                   class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition group">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="p-2 bg-purple-50 rounded-lg text-purple-600 mb-4 inline-block">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-lg text-gray-900 mb-2">Laporan Klien</h3>
+                            <p class="text-sm text-gray-500">Loyalty & spending analysis</p>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 group-hover:text-indigo-600 transition-colors mt-1"></i>
+                    </div>
+                </a>
             </div>
 
-            <!-- Summary -->
-            <div class="grid md:grid-cols-4 gap-4 mb-6">
-                <div class="card">
-                    <div class="text-sm text-gray-500">Total Pendapatan</div>
-                    <div class="text-2xl font-bold text-green-600">
-                        Rp {{ number_format($financialData->sum('total_revenue'), 0, ',', '.') }}
+            <!-- Quick Stats -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Statistik Cepat Bulan Ini</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center p-4 bg-gray-50 rounded-xl">
+                        <div class="text-2xl font-bold text-green-600">
+                            Rp {{ number_format($stats['monthly_revenue'], 0, ',', '.') }}
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Pendapatan</div>
                     </div>
-                </div>
-                <div class="card">
-                    <div class="text-sm text-gray-500">Total Booking</div>
-                    <div class="text-2xl font-bold">{{ $financialData->sum('total_bookings') }}</div>
-                </div>
-                <div class="card">
-                    <div class="text-sm text-gray-500">Rata-rata/Booking</div>
-                    <div class="text-2xl font-bold">
-                        Rp {{ number_format($financialData->avg('total_revenue'), 0, ',', '.') }}
+                    <div class="text-center p-4 bg-gray-50 rounded-xl">
+                        <div class="text-2xl font-bold text-blue-600">
+                            {{ $stats['monthly_bookings'] }}
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Total Booking</div>
                     </div>
-                </div>
-                <div class="card">
-                    <div class="text-sm text-gray-500">Hari Produktif</div>
-                    <div class="text-2xl font-bold">{{ $financialData->where('total_bookings', '>', 0)->count() }}</div>
+                    <div class="text-center p-4 bg-gray-50 rounded-xl">
+                        <div class="text-2xl font-bold text-amber-600">
+                            {{ $stats['new_clients'] }}
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Klien Baru</div>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-xl">
+                        <div class="text-2xl font-bold text-purple-600">
+                            {{ $stats['sold_packages'] }}
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Paket Terjual</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Financial Table -->
-            <div class="card mb-6">
-                <h3 class="font-bold mb-4">Detail Harian</h3>
+            <!-- Additional Reports Section (Optional) -->
+            @if(isset($financialData) && $financialData->count() > 0)
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Ringkasan Periode {{ $startDate }} - {{ $endDate }}</h3>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="border-b">
-                                <th class="py-3 text-left">Tanggal</th>
-                                <th class="py-3 text-left">Booking</th>
-                                <th class="py-3 text-left">Pendapatan</th>
-                                <th class="py-3 text-left">DP</th>
-                                <th class="py-3 text-left">Sisa</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($financialData as $data)
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3">{{ \Carbon\Carbon::parse($data->date)->format('d/m') }}</td>
-                                <td class="py-3">{{ $data->total_bookings }}</td>
-                                <td class="py-3 font-bold text-green-600">Rp {{ number_format($data->total_revenue, 0, ',', '.') }}</td>
-                                <td class="py-3">Rp {{ number_format($data->total_dp, 0, ',', '.') }}</td>
-                                <td class="py-3">Rp {{ number_format($data->total_remaining, 0, ',', '.') }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                        <tfoot class="font-bold border-t">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
                             <tr>
-                                <td class="py-3">TOTAL</td>
-                                <td class="py-3">{{ $financialData->sum('total_bookings') }}</td>
-                                <td class="py-3 text-green-600">Rp {{ number_format($financialData->sum('total_revenue'), 0, ',', '.') }}</td>
-                                <td class="py-3">Rp {{ number_format($financialData->sum('total_dp'), 0, ',', '.') }}</td>
-                                <td class="py-3">Rp {{ number_format($financialData->sum('total_remaining'), 0, ',', '.') }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Top Clients -->
-            <div class="card">
-                <h3 class="font-bold mb-4">Top Client</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full">
-                        <thead>
-                            <tr class="border-b">
-                                <th class="py-3 text-left">Nama</th>
-                                <th class="py-3 text-left">Booking</th>
-                                <th class="py-3 text-left">Total Belanja</th>
-                                <th class="py-3 text-left">Rata-rata</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Booking</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Pendapatan</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total DP</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa Tagihan</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach($topClients as $client)
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3">{{ $client->name }}</td>
-                                <td class="py-3">{{ $client->bookings_count }}</td>
-                                <td class="py-3 font-bold text-green-600">Rp {{ number_format($client->bookings_sum_total_amount, 0, ',', '.') }}</td>
-                                <td class="py-3">Rp {{ number_format($client->bookings_count > 0 ? $client->bookings_sum_total_amount / $client->bookings_count : 0, 0, ',', '.') }}</td>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($financialData as $data)
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $data->date }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $data->total_bookings }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-medium">Rp {{ number_format($data->total_revenue, 0, ',', '.') }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-blue-600">Rp {{ number_format($data->total_dp, 0, ',', '.') }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-amber-600">Rp {{ number_format($data->total_remaining, 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

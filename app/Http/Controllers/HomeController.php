@@ -36,28 +36,40 @@ class HomeController extends Controller
     }
 
     public function showPackage(Package $package)
-{
-      // normalize features
-    if (is_string($package->features)) {
-        $package->features = json_decode($package->features, true) ?? [];
+    {
+        // normalize features
+        if (is_string($package->features)) {
+            $package->features = json_decode($package->features, true) ?? [];
+        }
+
+        $otherPackages = Package::where('id', '!=', $package->id)
+            ->where('is_active', true)
+            ->get();
+
+        // ✅ FIX: Hitung tanggal yang BENAR-BENAR PENUH (>= 5 slot terisi)
+        // TAMBAHKAN 30 hari ke depan untuk batasan kalender
+        $startDate = now()->format('Y-m-d');
+        $endDate = now()->addDays(90)->format('Y-m-d'); // 3 bulan ke depan
+
+        $bookedDates = Booking::select('event_date')
+            ->whereBetween('event_date', [$startDate, $endDate]) // Batasi range
+            ->where('status', '!=', 'cancelled') // Abaikan yang cancel
+            ->where(function ($query) {
+                // Kriteria slot terisi: status valid DAN (ada bukti bayar ATAU sudah verified)
+                $query->whereIn('status', ['confirmed', 'in_progress', 'pending', 'completed'])
+                    ->where(function ($q) {
+                    $q->whereNotNull('payment_proof')
+                        ->orWhereNotNull('dp_verified_at');
+                });
+            })
+            ->groupBy('event_date')
+            ->havingRaw('COUNT(*) >= 5') // 👈 KUNCI: Hanya ambil jika jumlahnya >= 5
+            ->pluck('event_date')
+            ->map(function ($date) {
+                return \Carbon\Carbon::parse($date)->format('Y-m-d');
+            })
+            ->toArray();
+
+        return view('package-detail', compact('package', 'otherPackages', 'bookedDates'));
     }
-    
-    $otherPackages = Package::where('id', '!=', $package->id)
-        ->where('is_active', true)
-        ->take(3)
-        ->get();
-
-    // Get booked dates for this package
-    $bookedDates = Booking::where('package_id', $package->id)
-        ->whereIn('status', ['pending', 'confirmed', 'in_progress'])
-        ->where('event_date', '>=', now())
-        ->pluck('event_date')
-        ->map(function($date) {
-            return $date->format('Y-m-d');
-        })
-        ->unique()
-        ->toArray();
-
-    return view('package-detail', compact('package', 'otherPackages', 'bookedDates'));
-}
 }

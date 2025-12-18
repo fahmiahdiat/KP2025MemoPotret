@@ -17,14 +17,15 @@ Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->g
 
     // Bookings Routes
     Route::get('/bookings', [\App\Http\Controllers\Client\BookingController::class, 'index'])->name('bookings.index');
-    Route::get('/bookings/create', [\App\Http\Controllers\Client\BookingController::class, 'create'])->name('bookings.create');
-    Route::post('/bookings', [\App\Http\Controllers\Client\BookingController::class, 'store'])->name('bookings.store');
+    Route::get('/bookings/create-step2', [\App\Http\Controllers\Client\BookingController::class, 'createStep2'])->name('bookings.create-step2');
+    Route::post('/bookings/store-step2', [\App\Http\Controllers\Client\BookingController::class, 'storeStep2'])->name('bookings.store-step2');
     Route::get('/bookings/{booking}', [\App\Http\Controllers\Client\BookingController::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/upload-payment', [\App\Http\Controllers\Client\BookingController::class, 'uploadPayment'])->name('bookings.upload-payment');
-      // TAMBAHKAN RUTE INI:
+    // TAMBAHKAN RUTE INI:
     Route::post('/bookings/{booking}/upload-remaining-payment', [\App\Http\Controllers\Client\BookingController::class, 'uploadRemainingPayment'])->name('bookings.upload-remaining-payment');
     Route::delete('/bookings/{booking}/cancel', [\App\Http\Controllers\Client\BookingController::class, 'cancel'])
         ->name('bookings.cancel');
+
 
 });
 
@@ -66,10 +67,10 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     // Reports
     Route::get('/reports', [\App\Http\Controllers\Owner\ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [\App\Http\Controllers\Owner\ReportController::class, 'export'])->name('reports.export');
-
-    // Settings
-    Route::get('/settings', [\App\Http\Controllers\Owner\SettingController::class, 'index'])->name('settings.index');
-    Route::post('/settings', [\App\Http\Controllers\Owner\SettingController::class, 'update'])->name('settings.update');
+    Route::get('/reports/financial', [\App\Http\Controllers\Owner\ReportController::class, 'financial'])->name('reports.financial');
+    Route::get('/reports/bookings', [\App\Http\Controllers\Owner\ReportController::class, 'bookings'])->name('reports.bookings');
+    Route::get('/reports/packages', [\App\Http\Controllers\Owner\ReportController::class, 'packages'])->name('reports.packages');
+    Route::get('/reports/clients', [\App\Http\Controllers\Owner\ReportController::class, 'clients'])->name('reports.clients');
 
     // Users Management
     Route::get('/users', [\App\Http\Controllers\Owner\UserController::class, 'index'])->name('users.index');
@@ -78,7 +79,5 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::post('/users/{user}/toggle-status', [\App\Http\Controllers\Owner\UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::get('/users/{user}/client', [\App\Http\Controllers\Owner\UserController::class, 'showClient'])->name('users.show-client');
 
-    // System
-    Route::post('/backup', [\App\Http\Controllers\Owner\SettingController::class, 'backup'])->name('backup');
-    Route::post('/clear-cache', [\App\Http\Controllers\Owner\SettingController::class, 'clearCache'])->name('clear-cache');
 });
+

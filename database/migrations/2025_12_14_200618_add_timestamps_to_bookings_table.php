@@ -9,7 +9,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->timestamp('dp_verified_at')->nullable()->after('payment_notes');
+             $table->timestamp('dp_uploaded_at')->nullable()->after('payment_notes');
+            $table->timestamp('dp_verified_at')->nullable()->after('dp_uploaded_at');
             $table->timestamp('in_progress_at')->nullable()->after('dp_verified_at');
             $table->timestamp('results_uploaded_at')->nullable()->after('in_progress_at');
             $table->timestamp('pending_lunas_at')->nullable()->after('results_uploaded_at');
@@ -20,7 +21,8 @@ return new class extends Migration
     public function down()
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->dropColumn([
+            $table->dropColumn([ 
+                'dp_uploaded_at',
                 'dp_verified_at',
                 'in_progress_at',
                 'results_uploaded_at',

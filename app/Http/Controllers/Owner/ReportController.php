@@ -12,92 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function index(Request $request)
-    {
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
-
-        // Konversi ke Carbon untuk query yang benar
-        $start = Carbon::parse($startDate)->startOfDay();
-        $end = Carbon::parse($endDate)->endOfDay();
-
-        // Hitung statistik untuk dashboard
-        $stats = [
-            'monthly_revenue' => Booking::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
-                ->where('status', '!=', 'cancelled')
-                ->sum('total_amount'),
-
-            'monthly_bookings' => Booking::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
-
-            'new_clients' => User::where('role', 'client')
-                ->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
-                ->count(),
-
-            'sold_packages' => Package::has('bookings')->count(),
-        ];
-
-        // Financial Report dengan rentang tanggal yang benar
-        $financialData = Booking::whereBetween('created_at', [$start, $end])
-            ->where('status', '!=', 'cancelled')
-            ->selectRaw('
-                DATE(created_at) as date,
-                COUNT(*) as total_bookings,
-                SUM(total_amount) as total_revenue,
-                SUM(dp_amount) as total_dp,
-                SUM(remaining_amount) as total_remaining
-            ')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        // Debug: cek query
-        // dd([
-        //     'start' => $start,
-        //     'end' => $end,
-        //     'count' => Booking::whereBetween('created_at', [$start, $end])->count(),
-        //     'all_bookings' => Booking::select('id', 'created_at', 'status')->get()
-        // ]);
-
-        // Package Popularity
-        $packagePopularity = DB::table('bookings')
-            ->join('packages', 'bookings.package_id', '=', 'packages.id')
-            ->whereBetween('bookings.created_at', [$start, $end])
-            ->selectRaw('
-                packages.name,
-                COUNT(bookings.id) as booking_count,
-                SUM(bookings.total_amount) as total_amount
-            ')
-            ->groupBy('packages.id', 'packages.name')
-            ->orderBy('booking_count', 'desc')
-            ->get();
-
-        // Client Report
-        $topClients = User::where('role', 'client')
-            ->withCount([
-                'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
-                }
-            ])
-            ->withSum([
-                'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
-                }
-            ], 'total_amount')
-            ->orderBy('bookings_sum_total_amount', 'desc')
-            ->take(10)
-            ->get();
-
-        return view('owner.reports.index', compact(
-            'stats',
-            'financialData',
-            'packagePopularity',
-            'topClients',
-            'startDate',
-            'endDate'
-        ));
-    }
 
     // Laporan Keuangan
     public function financial(Request $request)
@@ -105,63 +19,116 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        // Konversi ke Carbon untuk query yang benar
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        // Debug: cek data booking
-        // $allBookings = Booking::select('id', 'created_at', 'status', 'total_amount')->get();
-        // dd($allBookings);
+        // ================================
+        // 1. CASH FLOW (UANG BENAR-BENAR MASUK)
+        // ================================
 
-        // Financial Report
-        $financialData = Booking::whereBetween('created_at', [$start, $end])
+        // DP yang diverifikasi dalam periode ini
+        $dpCashIn = Booking::whereNotNull('dp_verified_at')
+            ->whereBetween('dp_verified_at', [$start, $end])
+            ->sum('dp_amount');
+
+        // Pelunasan yang diverifikasi dalam periode ini  
+        $remainingCashIn = Booking::whereNotNull('remaining_verified_at')
+            ->whereBetween('remaining_verified_at', [$start, $end])
+            ->sum(DB::raw('total_amount - dp_amount'));
+
+
+        $totalCashIn = $dpCashIn + $remainingCashIn;
+
+        // ================================
+        // 2. OUTSTANDING (PIUTANG)
+        // ================================
+
+        // Booking dengan DP sudah diverifikasi tapi belum lunas
+        $outstanding = Booking::whereNotNull('dp_verified_at')
+            ->where('remaining_amount', '>', 0)
             ->where('status', '!=', 'cancelled')
-            ->selectRaw('
-                DATE(created_at) as date,
-                COUNT(*) as total_bookings,
-                SUM(total_amount) as total_revenue,
-                SUM(dp_amount) as total_dp,
-                SUM(remaining_amount) as total_remaining
-            ')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+            ->sum('remaining_amount');
 
-        // Package Popularity
-        $packagePopularity = DB::table('bookings')
-            ->join('packages', 'bookings.package_id', '=', 'packages.id')
-            ->whereBetween('bookings.created_at', [$start, $end])
-            ->selectRaw('
-                packages.name,
-                COUNT(bookings.id) as booking_count,
-                SUM(bookings.total_amount) as total_amount
-            ')
-            ->groupBy('packages.id', 'packages.name')
-            ->orderBy('booking_count', 'desc')
-            ->get();
+        // ================================
+        // 3. BOOKING VALUE (NILAI KONTRAK)
+        // ================================
 
-        // Client Report
-        $topClients = User::where('role', 'client')
-            ->withCount([
-                'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
-                }
-            ])
-            ->withSum([
-                'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
-                }
-            ], 'total_amount')
-            ->orderBy('bookings_sum_total_amount', 'desc')
-            ->take(10)
-            ->get();
+        // Booking yang dibuat dalam periode (nilai kontrak)
+        $bookingValue = Booking::whereBetween('created_at', [$start, $end])
+            ->where('status', '!=', 'cancelled')
+            ->sum('total_amount');
+
+        // ================================
+        // 4. TRANSACTION LIST (untuk tabel)
+        // ================================
+
+        // Transaksi pembayaran (DP dan pelunasan)
+        $transactions = collect();
+
+        // Tambahkan DP payments
+        $dpPayments = Booking::with(['user', 'package'])
+            ->whereNotNull('dp_verified_at')
+            ->whereBetween('dp_verified_at', [$start, $end])
+            ->get()
+            ->map(function ($booking) {
+                return [
+                    'type' => 'dp',
+                    'date' => $booking->dp_verified_at,
+                    'booking' => $booking,
+                    'amount' => $booking->dp_amount,
+                    'description' => 'DP - ' . $booking->booking_code,
+                ];
+            });
+
+        // Tambahkan remaining payments
+        $remainingPayments = Booking::with(['user', 'package'])
+            ->whereNotNull('remaining_verified_at')
+            ->whereBetween('remaining_verified_at', [$start, $end])
+            ->get()
+            ->map(function ($booking) {
+                return [
+                    'type' => 'pelunasan',
+                    'date' => $booking->remaining_verified_at,
+                    'booking' => $booking,
+                    'amount' => $booking->total_amount - $booking->dp_amount,
+                    'description' => 'Pelunasan - ' . $booking->booking_code,
+                ];
+            });
+
+        $transactions = $dpPayments->merge($remainingPayments)
+            ->sortByDesc('date')
+            ->values();
+
+        // ================================
+        // 5. STATISTICS
+        // ================================
+
+        $stats = [
+            'dp_payments_count' => Booking::whereNotNull('dp_verified_at')
+                ->whereBetween('dp_verified_at', [$start, $end])
+                ->count(),
+            'remaining_payments_count' => Booking::whereNotNull('remaining_verified_at')
+                ->whereBetween('remaining_verified_at', [$start, $end])
+                ->count(),
+            'total_transactions' => $transactions->count(),
+            'avg_dp' => Booking::whereNotNull('dp_verified_at')
+                ->whereBetween('dp_verified_at', [$start, $end])
+                ->avg('dp_amount') ?? 0,
+            'avg_remaining' => Booking::whereNotNull('remaining_verified_at')
+                ->whereBetween('remaining_verified_at', [$start, $end])
+                ->select(DB::raw('AVG(total_amount - dp_amount) as avg_remaining'))
+                ->value('avg_remaining') ?? 0,
+
+        ];
 
         return view('owner.reports.financial', compact(
-            'financialData',
-            'packagePopularity',
-            'topClients',
+            'dpCashIn',
+            'remainingCashIn',
+            'totalCashIn',
+            'outstanding',
+            'bookingValue',
+            'transactions',
+            'stats',
             'startDate',
             'endDate'
         ));
@@ -170,73 +137,51 @@ class ReportController extends Controller
     // Laporan Booking
     public function bookings(Request $request)
     {
-        $startDate = $request->input('start_date', Carbon::now()->subMonths(3)->format('Y-m-d'));
+        $startDate = $request->input('start_date', Carbon::now()->subMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        // Konversi ke Carbon untuk query yang benar
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        // Debug: cek total booking dalam rentang
-        // $totalInRange = Booking::whereBetween('created_at', [$start, $end])->count();
-        // $allBookings = Booking::select('id', 'created_at', 'status')->get();
-        // dd([
-        //     'start' => $start,
-        //     'end' => $end,
-        //     'total_in_range' => $totalInRange,
-        //     'all_bookings' => $allBookings
-        // ]);
+        // Query bookings
+        $query = Booking::with(['user', 'package'])
+            ->whereBetween('created_at', [$start, $end]);
 
-        // Booking Statistics by Status
-        $bookingStats = Booking::whereBetween('created_at', [$start, $end])
-            ->selectRaw('
-                status,
-                COUNT(*) as count,
-                SUM(total_amount) as total_amount,
-                AVG(total_amount) as avg_amount
-            ')
-            ->groupBy('status')
-            ->orderBy('count', 'desc')
+        // Filter by status jika ada
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $bookings = $query->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        // Hitung stats yang dibutuhkan di view
+        $totalBookings = $bookings->total();
+        $completedBookings = Booking::whereBetween('created_at', [$start, $end])
+            ->where('status', 'completed')
+            ->count();
+        $conversionRate = $totalBookings > 0 ? round(($completedBookings / $totalBookings) * 100, 1) : 0;
+
+        // Hitung processing days untuk completed bookings
+        $completedBookingsWithDates = Booking::whereBetween('created_at', [$start, $end])
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
             ->get();
 
-        // Monthly Trend - Perbaikan untuk MySQL/MariaDB
-        $monthlyTrend = Booking::whereBetween('created_at', [$start, $end])
-            ->selectRaw('
-                DATE_FORMAT(created_at, "%Y-%m") as month,
-                COUNT(*) as booking_count,
-                SUM(total_amount) as total_revenue,
-                SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count
-            ')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
-
-        // Conversion Rate
-        $conversionData = [
-            'total_bookings' => Booking::whereBetween('created_at', [$start, $end])->count(),
-            'pending_bookings' => Booking::whereBetween('created_at', [$start, $end])->where('status', 'pending')->count(),
-            'confirmed_bookings' => Booking::whereBetween('created_at', [$start, $end])->where('status', 'confirmed')->count(),
-            'completed_bookings' => Booking::whereBetween('created_at', [$start, $end])->where('status', 'completed')->count(),
-            'cancelled_bookings' => Booking::whereBetween('created_at', [$start, $end])->where('status', 'cancelled')->count(),
-        ];
-
-        // Average Time Analysis - PERBAIKAN DISINI
-        $timeAnalysis = Booking::whereBetween('created_at', [$start, $end])
-            ->whereNotNull('dp_verified_at')
-            ->where('dp_verified_at', '>', 'created_at') // Tambahkan kondisi ini
-            ->selectRaw('
-            AVG(TIMESTAMPDIFF(HOUR, created_at, dp_verified_at)) as avg_hours_to_verify,
-            AVG(TIMESTAMPDIFF(DAY, created_at, event_date)) as avg_days_before_event
-        ')
-            ->first();
+        $avgProcessingDays = $completedBookingsWithDates->count() > 0
+            ? round($completedBookingsWithDates->avg(function ($booking) {
+                return $booking->created_at->diffInDays($booking->completed_at);
+            }), 1)
+            : 0;
 
         return view('owner.reports.bookings', compact(
-            'bookingStats',
-            'monthlyTrend',
-            'conversionData',
-            'timeAnalysis',
+            'bookings',
             'startDate',
-            'endDate'
+            'endDate',
+            'totalBookings',
+            'completedBookings',
+            'conversionRate',
+            'avgProcessingDays'
         ));
     }
 
@@ -246,47 +191,39 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->subYear()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        // Konversi ke Carbon untuk query yang benar
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        // Package Performance
+        // Package performance
         $packagePerformance = Package::withCount([
             'bookings' => function ($query) use ($start, $end) {
-                $query->whereBetween('created_at', [$start, $end])
-                    ->where('status', '!=', 'cancelled');
+                $query->whereBetween('created_at', [$start, $end]);
             }
         ])
             ->withSum([
                 'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
+                    $query->whereBetween('created_at', [$start, $end]);
                 }
             ], 'total_amount')
             ->orderBy('bookings_sum_total_amount', 'desc')
             ->get();
 
-        // Monthly Package Trends
-        $monthlyPackageTrends = DB::table('bookings')
-            ->join('packages', 'bookings.package_id', '=', 'packages.id')
-            ->whereBetween('bookings.created_at', [$start, $end])
-            ->where('bookings.status', '!=', 'cancelled')
-            ->selectRaw('
-                packages.name,
-                DATE_FORMAT(bookings.created_at, "%Y-%m") as month,
-                COUNT(bookings.id) as booking_count,
-                SUM(bookings.total_amount) as total_amount
-            ')
-            ->groupBy('packages.id', 'packages.name', 'month')
-            ->orderBy('month')
-            ->orderBy('total_amount', 'desc')
-            ->get();
+        // Stats untuk cards
+        $totalPackages = Package::count();
+        $activePackages = Package::where('is_active', true)->count();
+        $soldPackages = Package::has('bookings')->count();
+        $totalSales = Booking::whereBetween('created_at', [$start, $end])->count();
+        $totalRevenue = Booking::whereBetween('created_at', [$start, $end])->sum('total_amount');
+        $avgBookingValue = $totalSales > 0 ? round($totalRevenue / $totalSales) : 0;
 
-        // Package Comparison
+        // Top packages
+        $topPackages = $packagePerformance->take(3);
+
+        // Package comparison (untuk compat dengan view lama jika masih ada)
         $packageComparison = [
-            'total_packages' => Package::count(),
-            'active_packages' => Package::where('is_active', true)->count(),
-            'packages_with_bookings' => Package::has('bookings')->count(),
+            'total_packages' => $totalPackages,
+            'active_packages' => $activePackages,
+            'packages_with_bookings' => $soldPackages,
             'avg_price' => Package::avg('price') ?? 0,
             'most_expensive' => Package::max('price') ?? 0,
             'cheapest' => Package::min('price') ?? 0,
@@ -294,8 +231,14 @@ class ReportController extends Controller
 
         return view('owner.reports.packages', compact(
             'packagePerformance',
-            'monthlyPackageTrends',
-            'packageComparison',
+            'totalPackages',
+            'activePackages',
+            'soldPackages',
+            'totalSales',
+            'totalRevenue',
+            'avgBookingValue',
+            'topPackages',
+            'packageComparison', // Tetap kirim untuk compatibility
             'startDate',
             'endDate'
         ));
@@ -307,67 +250,101 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->subYear()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        // Konversi ke Carbon untuk query yang benar
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        // Top Clients by Revenue
-        $topClientsByRevenue = User::where('role', 'client')
+        // Query clients with their bookings
+        $query = User::where('role', 'client')
             ->withCount([
                 'bookings' => function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
+                    $query->whereBetween('created_at', [$start, $end]);
                 }
             ])
             ->withSum([
                 'bookings' => function ($query) use ($start, $end) {
+                    $query->whereBetween('created_at', [$start, $end]);
+                }
+            ], 'total_amount')
+            ->with([
+                'bookings' => function ($query) use ($start, $end) {
                     $query->whereBetween('created_at', [$start, $end])
-                        ->where('status', '!=', 'cancelled');
+                        ->orderBy('created_at', 'desc')
+                        ->limit(1);
+                }
+            ]);
+
+        // Sorting
+        if ($request->input('sort') == 'bookings') {
+            $query->orderBy('bookings_count', 'desc');
+        } elseif ($request->input('sort') == 'new') {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $query->orderBy('bookings_sum_total_amount', 'desc');
+        }
+
+        $clients = $query->paginate(20);
+
+        // Stats untuk cards
+        $totalClients = User::where('role', 'client')->count();
+        $newClients = User::where('role', 'client')
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+        $activeClients = User::where('role', 'client')
+            ->whereHas('bookings', function ($query) use ($start, $end) {
+                $query->whereBetween('created_at', [$start, $end]);
+            })
+            ->count();
+        $returningClients = User::where('role', 'client')
+            ->whereHas('bookings', function ($query) use ($start, $end) {
+                $query->whereBetween('created_at', [$start, $end]);
+            }, '>', 1)
+            ->count();
+
+        $totalSpent = Booking::whereBetween('created_at', [$start, $end])->sum('total_amount');
+        $avgClientValue = $activeClients > 0 ? round($totalSpent / $activeClients) : 0;
+
+        // Top clients
+        $topClients = User::where('role', 'client')
+            ->withCount([
+                'bookings' => function ($query) use ($start, $end) {
+                    $query->whereBetween('created_at', [$start, $end]);
+                }
+            ])
+            ->withSum([
+                'bookings' => function ($query) use ($start, $end) {
+                    $query->whereBetween('created_at', [$start, $end]);
                 }
             ], 'total_amount')
             ->orderBy('bookings_sum_total_amount', 'desc')
-            ->take(20)
+            ->take(5)
             ->get();
 
-        // Client Loyalty Analysis
         $loyalClients = User::where('role', 'client')
             ->has('bookings', '>', 1)
             ->withCount('bookings')
             ->withSum('bookings', 'total_amount')
             ->orderBy('bookings_count', 'desc')
-            ->take(15)
+            ->take(5)
             ->get();
 
-        // New vs Returning Clients
+        // Client analysis untuk compatibility
         $clientAnalysis = [
-            'total_clients' => User::where('role', 'client')->count(),
-            'clients_with_bookings' => User::where('role', 'client')->has('bookings')->count(),
-            'new_clients' => User::where('role', 'client')
-                ->whereBetween('created_at', [$start, $end])
-                ->count(),
-            'returning_clients' => User::where('role', 'client')
-                ->has('bookings', '>', 1)
-                ->whereHas('bookings', function ($query) use ($start, $end) {
-                    $query->whereBetween('created_at', [$start, $end]);
-                })
-                ->count(),
+            'total_clients' => $totalClients,
+            'clients_with_bookings' => $activeClients,
+            'new_clients' => $newClients,
+            'returning_clients' => $returningClients,
         ];
 
-        // Client Geographic Distribution (if location data exists)
-        $clientLocations = Booking::whereBetween('created_at', [$start, $end])
-            ->select('event_location')
-            ->whereNotNull('event_location')
-            ->groupBy('event_location')
-            ->selectRaw('event_location, COUNT(*) as booking_count')
-            ->orderBy('booking_count', 'desc')
-            ->take(10)
-            ->get();
-
         return view('owner.reports.clients', compact(
-            'topClientsByRevenue',
+            'clients',
+            'totalClients',
+            'newClients',
+            'activeClients',
+            'returningClients',
+            'avgClientValue',
+            'topClients',
             'loyalClients',
-            'clientAnalysis',
-            'clientLocations',
+            'clientAnalysis', // Tetap kirim untuk compatibility
             'startDate',
             'endDate'
         ));
@@ -412,31 +389,75 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    private function exportFinancial($file, $startDate, $endDate)
+    // ReportController.php
+    public function exportFinancial(Request $request)
     {
-        fputcsv($file, ['Tanggal', 'Total Booking', 'Total Pendapatan', 'Total DP', 'Total Sisa Tagihan']);
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
 
-        $data = Booking::whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', '!=', 'cancelled')
-            ->selectRaw('
-                DATE(created_at) as date,
-                COUNT(*) as total_bookings,
-                SUM(total_amount) as total_revenue,
-                SUM(dp_amount) as total_dp,
-                SUM(remaining_amount) as total_remaining
-            ')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+        $filename = "laporan-kas-{$startDate}-to-{$endDate}.csv";
 
-        foreach ($data as $row) {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$filename",
+        ];
+
+        $callback = function () use ($startDate, $endDate) {
+            $file = fopen('php://output', 'w');
+
+            // Header
             fputcsv($file, [
-                $row->date,
-                $row->total_bookings,
-                $row->total_revenue,
-                $row->total_dp,
-                $row->total_remaining
+                'Tanggal Verifikasi',
+                'Jenis',
+                'Kode Booking',
+                'Klien',
+                'Paket',
+                'Jumlah',
+                'Status Booking'
             ]);
-        }
+
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+
+            // DP Payments
+            $dpPayments = Booking::with(['user', 'package'])
+                ->whereNotNull('dp_verified_at')
+                ->whereBetween('dp_verified_at', [$start, $end])
+                ->get();
+
+            foreach ($dpPayments as $booking) {
+                fputcsv($file, [
+                    $booking->dp_verified_at->format('Y-m-d H:i'),
+                    'DP',
+                    $booking->booking_code,
+                    $booking->user->name,
+                    $booking->package->name,
+                    $booking->dp_amount,
+                    $booking->status
+                ]);
+            }
+
+            // Remaining Payments
+            $remainingPayments = Booking::with(['user', 'package'])
+                ->whereNotNull('remaining_verified_at')
+                ->whereBetween('remaining_verified_at', [$start, $end])
+                ->get();
+
+            foreach ($remainingPayments as $booking) {
+                fputcsv($file, [
+                    $booking->remaining_verified_at->format('Y-m-d H:i'),
+                    'Pelunasan',
+                    $booking->booking_code,
+                    $booking->user->name,
+                    $booking->package->name,
+                    $booking->total_amount - $booking->dp_amount,
+                    $booking->status
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

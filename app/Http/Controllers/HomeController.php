@@ -1,17 +1,35 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\Booking; // ✅ TAMBAHKAN INI
+
+use App\Models\Booking;
 use App\Models\Package;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
+    /**
+     * Helper untuk mengalihkan role selain client ke dashboard masing-masing.
+     */
+    private function redirectNonClient()
+    {
+        if (auth()->check() && !auth()->user()->isClient()) {
+            return match(auth()->user()->role) {
+                'admin' => redirect()->route('admin.dashboard'),
+                'owner' => redirect()->route('owner.dashboard'),
+                default => redirect()->route('dashboard'),
+            };
+        }
+        return null;
+    }
+
     public function index()
     {
+        // Jalankan proteksi: Jika admin/owner mampir sini, redirect.
+        if ($redirect = $this->redirectNonClient()) return $redirect;
+
         $packages = Package::active()->latest()->take(3)->get();
 
-        // FIX: Pastikan features selalu array
         $packages->each(function ($package) {
             if (is_string($package->features)) {
                 $package->features = json_decode($package->features, true) ?? [];
@@ -23,9 +41,11 @@ class HomeController extends Controller
 
     public function packages()
     {
+        // Jalankan proteksi
+        if ($redirect = $this->redirectNonClient()) return $redirect;
+
         $packages = Package::active()->get();
 
-        // FIX: Pastikan features selalu array
         $packages->each(function ($package) {
             if (is_string($package->features)) {
                 $package->features = json_decode($package->features, true) ?? [];
@@ -37,7 +57,9 @@ class HomeController extends Controller
 
     public function showPackage(Package $package)
     {
-        // normalize features
+        // Jalankan proteksi
+        if ($redirect = $this->redirectNonClient()) return $redirect;
+
         if (is_string($package->features)) {
             $package->features = json_decode($package->features, true) ?? [];
         }
@@ -46,16 +68,13 @@ class HomeController extends Controller
             ->where('is_active', true)
             ->get();
 
-        // ✅ FIX: Hitung tanggal yang BENAR-BENAR PENUH (>= 5 slot terisi)
-        // TAMBAHKAN 30 hari ke depan untuk batasan kalender
         $startDate = now()->format('Y-m-d');
-        $endDate = now()->addDays(90)->format('Y-m-d'); // 3 bulan ke depan
+        $endDate = now()->addDays(90)->format('Y-m-d');
 
         $bookedDates = Booking::select('event_date')
-            ->whereBetween('event_date', [$startDate, $endDate]) // Batasi range
-            ->where('status', '!=', 'cancelled') // Abaikan yang cancel
+            ->whereBetween('event_date', [$startDate, $endDate])
+            ->where('status', '!=', 'cancelled')
             ->where(function ($query) {
-                // Kriteria slot terisi: status valid DAN (ada bukti bayar ATAU sudah verified)
                 $query->whereIn('status', ['confirmed', 'in_progress', 'pending', 'completed'])
                     ->where(function ($q) {
                     $q->whereNotNull('payment_proof')
@@ -63,7 +82,7 @@ class HomeController extends Controller
                 });
             })
             ->groupBy('event_date')
-            ->havingRaw('COUNT(*) >= 5') // 👈 KUNCI: Hanya ambil jika jumlahnya >= 5
+            ->havingRaw('COUNT(*) >= 5')
             ->pluck('event_date')
             ->map(function ($date) {
                 return \Carbon\Carbon::parse($date)->format('Y-m-d');

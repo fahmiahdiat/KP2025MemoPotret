@@ -45,26 +45,19 @@
                         </div>
                         <h3 class="text-xl font-bold text-gray-800 mb-3">Booking Dibatalkan</h3>
 
-                        <div
-                            class="inline-flex items-center gap-3 px-4 py-2 bg-white rounded-lg border border-gray-200 mb-4">
-                            @if($booking->cancelled_by == 'admin')
-                                <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">Dibatalkan oleh Admin</span>
-                            @else
-                                <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                </div>
-                                <span class="text-sm font-medium text-gray-700">Dibatalkan oleh Anda</span>
-                            @endif
-                        </div>
+                        <div class="inline-flex items-center gap-3 px-4 py-2 bg-white rounded-lg border border-gray-200 mb-4">
+    @if(strpos($booking->admin_notes, 'ADMIN_CANCEL:') === 0)
+        <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+            <i class="fas fa-user-shield text-red-600 text-xs"></i>
+        </div>
+        <span class="text-sm font-medium text-gray-700">Dibatalkan oleh Admin</span>
+    @else
+        <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+            <i class="fas fa-user text-blue-600 text-xs"></i>
+        </div>
+        <span class="text-sm font-medium text-gray-700">Dibatalkan oleh Anda</span>
+    @endif
+</div>
 
                         @if($booking->cancel_reason)
                             <div class="max-w-md mx-auto">
@@ -622,52 +615,71 @@
             </div>
         </dialog>
 
-        {{-- MODAL CANCEL DENGAN FORM SEDERHANA --}}
-        <dialog id="cancelModal"
-            class="bg-transparent backdrop:bg-black/50 p-0 w-full max-w-lg rounded-2xl shadow-2xl open:animate-fade-in-up">
-            <div class="bg-white">
-                <div class="px-6 py-4 border-b border-red-100 flex justify-between items-center bg-red-50">
-                    <h3 class="font-bold text-red-900">Konfirmasi Pembatalan</h3>
-                    <button onclick="document.getElementById('cancelModal').close()"
-                        class="text-red-400 hover:text-red-600 text-2xl leading-none">&times;</button>
+        {{-- MODAL CANCEL DENGAN FORM YANG BENAR --}}
+<dialog id="cancelModal" class="bg-transparent backdrop:bg-black/50 p-0 w-full max-w-lg rounded-2xl shadow-2xl open:animate-fade-in-up">
+    <div class="bg-white">
+        <div class="px-6 py-4 border-b border-red-100 flex justify-between items-center bg-red-50">
+            <h3 class="font-bold text-red-900">Konfirmasi Pembatalan</h3>
+            <button type="button" onclick="closeCancelModal()"
+                class="text-red-400 hover:text-red-600 text-2xl leading-none">&times;</button>
+        </div>
+        
+        {{-- FORM --}}
+        <form id="cancelForm" action="{{ route('client.bookings.cancel', $booking) }}" method="POST" class="p-6">
+            @csrf
+            
+            <div class="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
+                <div class="flex gap-3">
+                    <svg class="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.928-.833-2.698 0L4.342 16.5c-.77.833.192 2.5 1.732 2.5z">
+                        </path>
+                    </svg>
+                    <div>
+                        <h4 class="font-bold text-red-800 text-sm">Peringatan!</h4>
+                        <p class="text-xs text-red-700 mt-1">
+                            Pembatalan booking akan menyebabkan <strong>DP 50% HANGUS</strong>.
+                        </p>
+                        <p class="text-xs text-red-600 mt-2">Booking tidak bisa dibatalkan jika kurang dari 30 hari sebelum acara.</p>
+                    </div>
                 </div>
-                <form action="{{ route('client.bookings.cancel', $booking) }}" method="POST" class="p-6">
-                    @csrf
-                    @method('DELETE')
-                    <div class="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
-                        <div class="flex gap-3">
-                            <svg class="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.928-.833-2.698 0L4.342 16.5c-.77.833.192 2.5 1.732 2.5z">
-                                </path>
-                            </svg>
-                            <div>
-                                <h4 class="font-bold text-red-800 text-sm">Peringatan!</h4>
-                                <p class="text-xs text-red-700 mt-1">
-                                    Pembatalan booking akan menyebabkan <strong>DP 50% HANGUS</strong>.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Alasan singkat</label>
-                        <input type="text" name="cancel_reason"
-                            class="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm"
-                            placeholder="Contoh: Jadwal berubah" required>
-                    </div>
-
-                    <div class="flex justify-end gap-3">
-                        <button type="button" onclick="document.getElementById('cancelModal').close()"
-                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50">Kembali</button>
-                        <button type="submit"
-                            class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm">Ya,
-                            Batalkan</button>
-                    </div>
-                </form>
             </div>
-        </dialog>
+
+            {{-- ALASAN PEMBATALAN --}}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Alasan singkat <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="cancel_reason" id="cancel_reason"
+                        class="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm p-3"
+                        placeholder="Contoh: Jadwal berubah, ada halangan" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Detail lengkap <span class="text-red-500">*</span>
+                    </label>
+                    <textarea name="cancel_details" id="cancel_details" rows="3"
+                        class="w-full rounded-lg border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm p-3"
+                        placeholder="Jelaskan alasan pembatalan secara detail..." required></textarea>
+                </div>
+            </div>
+
+            {{-- BUTTONS --}}
+            <div class="flex justify-end gap-3 mt-8">
+                <button type="button" onclick="closeCancelModal()"
+                    class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                    Kembali
+                </button>
+                <button type="submit" id="cancelSubmitBtn"
+                    class="px-5 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Ya, Batalkan Booking
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
     @endif
 
     @push('scripts')
@@ -759,6 +771,94 @@
                     `);
                 printWindow.document.close();
             }
+
+            // Fungsi untuk menutup modal
+function closeCancelModal() {
+    document.getElementById('cancelModal').close();
+    resetCancelForm();
+}
+
+// Reset form
+function resetCancelForm() {
+    document.getElementById('cancelForm').reset();
+    document.getElementById('cancelSubmitBtn').disabled = false;
+}
+
+// Handle form submission dengan AJAX
+document.getElementById('cancelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('cancelSubmitBtn');
+    const formData = new FormData(this);
+    
+    // Disable button saat submit
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Memproses...';
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.status === 419) {
+            // CSRF token expired
+            location.reload();
+            return;
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Tampilkan success message
+            showToast('success', data.message || 'Booking berhasil dibatalkan');
+            
+            // Tutup modal
+            closeCancelModal();
+            
+            // Redirect ke dashboard setelah 2 detik
+            setTimeout(() => {
+                window.location.href = '{{ route("client.dashboard") }}';
+            }, 2000);
+        } else {
+            // Tampilkan error
+            showToast('error', data.message || 'Gagal membatalkan booking');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Ya, Batalkan Booking';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('error', 'Terjadi kesalahan jaringan');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Ya, Batalkan Booking';
+    });
+});
+
+// Fungsi untuk toast notification
+function showToast(type, message) {
+    // Hapus toast sebelumnya
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) existingToast.remove();
+    
+    // Buat toast baru
+    const toast = document.createElement('div');
+    toast.className = `toast-notification fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg text-white font-medium ${
+        type === 'success' ? 'bg-green-600' : 'bg-red-600'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Hapus otomatis setelah 5 detik
+    setTimeout(() => toast.remove(), 5000);
+}
+
+// Log untuk debugging
+console.log('Cancel route:', '{{ route("client.bookings.cancel", $booking) }}');
+console.log('CSRF token:', '{{ csrf_token() }}');
         </script>
         <style>
             dialog[open] {

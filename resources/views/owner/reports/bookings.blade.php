@@ -3,142 +3,245 @@
     <x-slot name="header">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h2 class="text-2xl font-bold text-gray-900 leading-tight">Laporan Booking</h2>
-                <p class="text-sm text-gray-500 mt-1">Analisis status dan konversi booking</p>
+                <h2 class="text-2xl font-bold text-gray-900">Laporan Booking</h2>
+                <p class="text-sm text-gray-500 mt-1">Periode {{ \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') }} - {{ \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y') }}</p>
             </div>
-            <div class="flex items-center gap-4">
-                <form method="GET" class="flex items-center gap-2">
-                    <input type="date" name="start_date" value="{{ $startDate }}" 
-                           class="border rounded-lg px-3 py-2 text-sm">
-                    <span class="text-gray-500">s/d</span>
-                    <input type="date" name="end_date" value="{{ $endDate }}" 
-                           class="border rounded-lg px-3 py-2 text-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <form method="GET" class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-2">
+                        <input type="date" name="start_date" value="{{ $startDate }}" 
+                               class="border rounded-lg px-3 py-2 text-sm w-40">
+                        <span class="text-gray-500">s/d</span>
+                        <input type="date" name="end_date" value="{{ $endDate }}" 
+                               class="border rounded-lg px-3 py-2 text-sm w-40">
+                    </div>
                     <button type="submit" 
                             class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
-                        Filter
+                        Terapkan
                     </button>
-                    <a href="{{ route('owner.reports.index') }}" 
-                       class="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm">
-                        Kembali
-                    </a>
                 </form>
+                <a href="?export=excel&start_date={{ $startDate }}&end_date={{ $endDate }}" 
+                   class="border border-green-600 text-green-600 px-4 py-2 rounded-lg hover:bg-green-50 text-sm">
+                    <i class="fas fa-file-excel mr-2"></i>Export Excel
+                </a>
             </div>
         </div>
     </x-slot>
 
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Conversion Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                @php
-                    $conversionRate = $conversionData['total_bookings'] > 0 
-                        ? round(($conversionData['completed_bookings'] / $conversionData['total_bookings']) * 100, 1) 
-                        : 0;
-                @endphp
-                
-                <div class="bg-white rounded-xl p-4 shadow border border-gray-100">
-                    <p class="text-sm text-gray-500 mb-1">Total Booking</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $conversionData['total_bookings'] }}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow border border-gray-100">
-                    <p class="text-sm text-gray-500 mb-1">Pending</p>
-                    <p class="text-2xl font-bold text-amber-600">{{ $conversionData['pending_bookings'] }}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow border border-gray-100">
-                    <p class="text-sm text-gray-500 mb-1">Confirmed</p>
-                    <p class="text-2xl font-bold text-blue-600">{{ $conversionData['confirmed_bookings'] }}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow border border-gray-100">
-                    <p class="text-sm text-gray-500 mb-1">Completed</p>
-                    <p class="text-2xl font-bold text-green-600">{{ $conversionData['completed_bookings'] }}</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow border border-gray-100">
-                    <p class="text-sm text-gray-500 mb-1">Conversion Rate</p>
-                    <p class="text-2xl font-bold text-purple-600">{{ $conversionRate }}%</p>
-                </div>
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- BOOKING STATS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            @php
+                $totalBookings = $bookings->count();
+                $completedBookings = $bookings->where('status', 'completed')->count();
+                $pendingBookings = $bookings->where('status', 'pending')->count();
+                $conversionRate = $totalBookings > 0
+                    ? round(($completedBookings / $totalBookings) * 100, 1)
+                    : 0;
+            @endphp
+
+            <!-- TOTAL -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border">
+                <p class="text-sm text-gray-500 mb-1">Total Booking</p>
+                <p class="text-3xl font-bold text-gray-900">
+                    {{ $totalBookings }}
+                </p>
             </div>
 
-            <!-- Booking Status Details -->
-            <div class="bg-white rounded-xl shadow border border-gray-100 mb-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="font-bold text-lg text-gray-900">Detail Status Booking</h3>
+            <!-- SELESAI -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border">
+                <p class="text-sm text-gray-500 mb-1">Selesai</p>
+                <p class="text-3xl font-bold text-green-600">
+                    {{ $completedBookings }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    {{ $conversionRate }}% conversion
+                </p>
+            </div>
+
+            <!-- PENDING -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border">
+                <p class="text-sm text-gray-500 mb-1">Pending</p>
+                <p class="text-3xl font-bold text-amber-600">
+                    {{ $pendingBookings }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    Belum DP
+                </p>
+            </div>
+
+            <!-- CANCEL / OTHER -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border">
+                <p class="text-sm text-gray-500 mb-1">Dibatalkan</p>
+                <p class="text-3xl font-bold text-red-600">
+                    {{ $bookings->where('status', 'cancelled')->count() }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    Tidak dilanjutkan
+                </p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+            <!-- BOOKINGS TABLE -->
+            <div class="bg-white rounded-lg shadow-sm border mb-6">
+                <div class="px-6 py-4 border-b">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Daftar Booking</h3>
+                            <p class="text-sm text-gray-500">Total {{ $bookings->count() }} booking</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select class="border rounded-lg px-3 py-2 text-sm" onchange="window.location.href = this.value">
+                                <option value="{{ route('owner.reports.bookings', ['start_date' => $startDate, 'end_date' => $endDate]) }}" 
+                                        {{ !request('status') ? 'selected' : '' }}>Semua Status</option>
+                                <option value="{{ route('owner.reports.bookings', ['start_date' => $startDate, 'end_date' => $endDate, 'status' => 'pending']) }}"
+                                        {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="{{ route('owner.reports.bookings', ['start_date' => $startDate, 'end_date' => $endDate, 'status' => 'confirmed']) }}"
+                                        {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmed</option>
+                                <option value="{{ route('owner.reports.bookings', ['start_date' => $startDate, 'end_date' => $endDate, 'status' => 'completed']) }}"
+                                        {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
+                
+                @if($bookings->count() > 0)
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paket</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Event</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Nilai</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rata-rata</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            @forelse($bookingStats as $stat)
+                            @foreach($bookings as $booking)
                             <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-indigo-600">{{ $booking->booking_code }}</div>
+                                    <div class="text-xs text-gray-500">{{ $booking->created_at->format('d/m/Y') }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">{{ $booking->user->name }}</div>
+                                    <div class="text-xs text-gray-500">{{ $booking->user->phone ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $booking->package->name }}</div>
+                                    <div class="text-xs text-gray-500">Rp {{ number_format($booking->package->price, 0, ',', '.') }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $booking->event_date->format('d/m/Y') }}</div>
+                                    <div class="text-xs text-gray-500">{{ $booking->event_time ?? '09:00' }}</div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php
                                         $statusColors = [
                                             'pending' => 'bg-amber-100 text-amber-800',
                                             'confirmed' => 'bg-blue-100 text-blue-800',
+                                            'in_progress' => 'bg-indigo-100 text-indigo-800',
+                                            'pending_lunas' => 'bg-orange-100 text-orange-800',
                                             'completed' => 'bg-green-100 text-green-800',
                                             'cancelled' => 'bg-red-100 text-red-800',
                                         ];
-                                        $colorClass = $statusColors[$stat->status] ?? 'bg-gray-100 text-gray-800';
                                     @endphp
-                                    <span class="px-3 py-1 rounded-full text-xs font-medium {{ $colorClass }}">
-                                        {{ ucfirst($stat->status) }}
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium {{ $statusColors[$booking->status] ?? 'bg-gray-100' }}">
+                                        {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
                                     </span>
+                                    @if($booking->status == 'pending')
+                                        <div class="text-xs text-gray-500 mt-1">Menunggu DP</div>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $stat->count }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {{ number_format($stat->total_amount, 0, ',', '.') }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp {{ number_format($stat->avg_amount, 0, ',', '.') }}</td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                    <i class="fas fa-calendar-times text-4xl text-gray-300 mb-2"></i>
-                                    <p class="text-sm">Tidak ada data booking</p>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</div>
+                                    <div class="text-xs text-gray-500">
+                                        DP: Rp {{ number_format($booking->dp_amount, 0, ',', '.') }}
+                                    </div>
                                 </td>
                             </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Monthly Trend -->
-            @if($monthlyTrend->count() > 0)
-            <div class="bg-white rounded-xl shadow border border-gray-100 mb-8">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="font-bold text-lg text-gray-900">Trend Bulanan</h3>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        @foreach($monthlyTrend as $trend)
-                        <div class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                            <div class="flex justify-between items-center mb-2">
-                                <p class="font-medium text-gray-900">{{ \Carbon\Carbon::createFromFormat('Y-m', $trend->month)->format('F Y') }}</p>
-                                <p class="text-sm text-gray-500">{{ $trend->booking_count }} booking</p>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <div>
-                                    <p class="text-gray-600">Total Pendapatan: <span class="font-medium text-green-600">Rp {{ number_format($trend->total_revenue, 0, ',', '.') }}</span></p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-600">Completed: <span class="font-medium text-green-600">{{ $trend->completed_count }}</span></p>
-                                </div>
-                            </div>
+                
+                <div class="px-6 py-4 border-t">
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            Menampilkan {{ $bookings->count() }} booking
                         </div>
-                        @endforeach
+                        @if($bookings->hasPages())
+                        <div>
+                            {{ $bookings->links() }}
+                        </div>
+                        @endif
                     </div>
                 </div>
+                @else
+                <div class="px-6 py-12 text-center">
+                    <i class="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
+                    <p class="text-gray-500">Tidak ada booking pada periode ini</p>
+                    <p class="text-sm text-gray-400 mt-1">Coba ubah rentang tanggal atau status filter</p>
+                </div>
+                @endif
             </div>
-            @endif
+
+            <!-- STATUS DISTRIBUTION -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <h3 class="font-bold text-lg text-gray-900 mb-4">Distribusi Status Booking</h3>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    @php
+                        $statusCounts = $bookings->groupBy('status')->map->count();
+                        $total = $bookings->count();
+                    @endphp
+                    
+                    @foreach(['pending', 'confirmed', 'in_progress', 'pending_lunas', 'completed', 'cancelled'] as $status)
+                    @php
+                        $count = $statusCounts[$status] ?? 0;
+                        $percentage = $total > 0 ? round(($count / $total) * 100) : 0;
+                        $colors = [
+                            'pending' => 'bg-amber-500',
+                            'confirmed' => 'bg-blue-500',
+                            'in_progress' => 'bg-indigo-500',
+                            'pending_lunas' => 'bg-orange-500',
+                            'completed' => 'bg-green-500',
+                            'cancelled' => 'bg-red-500',
+                        ];
+                    @endphp
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">{{ $count }}</div>
+                        <div class="h-2 w-full bg-gray-200 rounded-full mt-2 overflow-hidden">
+                            <div class="h-full {{ $colors[$status] ?? 'bg-gray-400' }}" 
+                                 style="width: {{ $percentage }}%"></div>
+                        </div>
+                        @php
+    $statusLabels = [
+        'pending'        => 'Menunggu Konfirmasi DP',
+        'confirmed'      => 'Dikonfirmasi',
+        'in_progress'    => 'Sedang Berjalan',
+        'pending_lunas'  => 'Menunggu Pelunasan',
+        'completed'      => 'Selesai',
+        'cancelled'      => 'Dibatalkan',
+    ];
+@endphp
+
+<div class="text-xs text-gray-500 mt-2">
+    {{ $statusLabels[$status] ?? $status }}
+</div>
+
+                        <div class="text-xs font-medium">{{ $percentage }}%</div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>

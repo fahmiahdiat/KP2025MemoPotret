@@ -11,6 +11,7 @@ class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
+        
         // Default tanggal hari ini jika tidak ada input
         $date = $request->input('date', Carbon::today()->format('Y-m-d'));
         $statusFilter = $request->input('status', '');

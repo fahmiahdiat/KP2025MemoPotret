@@ -50,7 +50,7 @@
                                         :active="request()->routeIs('owner.dashboard')">
                                         {{ __('Dashboard') }}
                                     </x-nav-link>
-                                    <x-nav-link href="{{ route('owner.reports.index') }}"
+                                    <x-nav-link href="{{ route('owner.reports.financial') }}"
                                         :active="request()->routeIs('owner.reports.*')">
                                         {{ __('Laporan') }}
                                     </x-nav-link>
@@ -248,7 +248,7 @@
                                     <i class="fas fa-crown mr-3"></i>
                                     {{ __('Owner Dashboard') }}
                                 </x-responsive-nav-link>
-                                <x-responsive-nav-link href="{{ route('owner.reports.index') }}">
+                                <x-responsive-nav-link href="{{ route('owner.reports.financial') }}">
                                     <i class="fas fa-chart-bar mr-3"></i>
                                     {{ __('Laporan') }}
                                 </x-responsive-nav-link>

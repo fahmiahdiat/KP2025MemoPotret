@@ -15,7 +15,14 @@ class CheckRole
         }
 
         $user = Auth::user();
-        
+
+        // Cek jika admin tidak aktif
+        if ($user->role === 'admin' && ($user->is_active === false)) {
+            Auth::logout();
+            return redirect()->route('login')
+                ->with('error', 'Akun Anda telah dinonaktifkan.');
+        }
+
         foreach ($roles as $role) {
             if ($user->role === $role) {
                 return $next($request);
@@ -23,7 +30,7 @@ class CheckRole
         }
 
         // Redirect based on role
-        return match($user->role) {
+        return match ($user->role) {
             'client' => redirect()->route('client.dashboard'),
             'admin' => redirect()->route('admin.dashboard'),
             'owner' => redirect()->route('owner.dashboard'),

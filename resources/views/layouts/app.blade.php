@@ -35,14 +35,10 @@
                 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
                     <!-- Sidebar component -->
                     <div class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
-                        <div class="flex h-auto shrink-0 items-center justify-center py-4"> {{-- Ubah h-16 jadi h-auto dan
-                            tambah padding --}}
+                        <div class="flex h-auto shrink-0 items-center justify-center py-4">
                             <a href="{{ auth()->user()->isOwner() ? route('owner.dashboard') : route('admin.dashboard') }}"
-                                class="flex flex-col items-center gap-2"> {{-- Gunakan flex-col agar badge ada di BAWAH logo
-                                --}}
-
+                                class="flex flex-col items-center gap-2">
                                 <x-application-logo class="block h-8 w-auto fill-current text-gray-800" />
-                                {{-- Ganti h-8 menjadi h-16 atau h-20 --}}
 
                                 @if(auth()->user()->isOwner())
                                     <span
@@ -73,43 +69,50 @@
                                                     Dashboard
                                                 </a>
                                             </li>
-                                            <li>
-                                                <a href="{{ route('owner.reports.index') }}"
-                                                    class="{{ request()->routeIs('owner.reports.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
-                                                    <i
-                                                        class="fas fa-chart-bar {{ request()->routeIs('owner.reports.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
-                                                    Laporan
-                                                </a>
-
-                                                <!-- Submenu untuk laporan -->
-                                                <ul
-                                                    class="ml-6 mt-1 space-y-1 {{ request()->routeIs('owner.reports.*') ? 'block' : 'hidden' }}">
+                                            
+                                            <!-- REPORTS DROPDOWN -->
+                                            <li x-data="{ open: {{ request()->routeIs('owner.reports.*') ? 'true' : 'false' }} }">
+                                                <button @click="open = !open"
+                                                    class="w-full text-left group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6 {{ request()->routeIs('owner.reports.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }}">
+                                                    <div class="flex items-center gap-x-3">
+                                                        <i
+                                                            class="fas fa-chart-bar {{ request()->routeIs('owner.reports.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
+                                                        Laporan
+                                                    </div>
+                                                    <i class="fas fa-chevron-down text-xs transition-transform duration-200" 
+                                                       :class="{ 'rotate-180': open }"></i>
+                                                </button>
+                                                
+                                                <!-- Dropdown Reports -->
+                                                <ul x-show="open" x-collapse
+                                                    class="ml-6 mt-1 space-y-1 border-l border-gray-200 pl-3">
                                                     <li>
                                                         <a href="{{ route('owner.reports.financial') }}"
-                                                            class="{{ request()->routeIs('owner.reports.financial') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
-                                                            <i class="fas fa-money-bill-wave text-xs"></i> Keuangan
+                                                            class="{{ request()->routeIs('owner.reports.financial') ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1.5">
+                                                            <i class="fas fa-money-bill-wave text-xs w-4"></i> Keuangan
                                                         </a>
                                                     </li>
                                                     <li>
                                                         <a href="{{ route('owner.reports.bookings') }}"
-                                                            class="{{ request()->routeIs('owner.reports.bookings') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
-                                                            <i class="fas fa-calendar-check text-xs"></i> Booking
+                                                            class="{{ request()->routeIs('owner.reports.bookings') ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1.5">
+                                                            <i class="fas fa-calendar-check text-xs w-4"></i> Booking
                                                         </a>
                                                     </li>
                                                     <li>
                                                         <a href="{{ route('owner.reports.packages') }}"
-                                                            class="{{ request()->routeIs('owner.reports.packages') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
-                                                            <i class="fas fa-box text-xs"></i> Paket
+                                                            class="{{ request()->routeIs('owner.reports.packages') ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1.5">
+                                                            <i class="fas fa-box text-xs w-4"></i> Paket
                                                         </a>
                                                     </li>
                                                     <li>
                                                         <a href="{{ route('owner.reports.clients') }}"
-                                                            class="{{ request()->routeIs('owner.reports.clients') ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1">
-                                                            <i class="fas fa-users text-xs"></i> Klien
+                                                            class="{{ request()->routeIs('owner.reports.clients') ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:text-indigo-600' }} text-sm flex items-center gap-x-2 px-2 py-1.5">
+                                                            <i class="fas fa-users text-xs w-4"></i> Klien
                                                         </a>
                                                     </li>
                                                 </ul>
                                             </li>
+                                            
                                             <li>
                                                 <a href="{{ route('owner.users.index') }}"
                                                     class="{{ request()->routeIs('owner.users.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
@@ -119,7 +122,7 @@
                                                 </a>
                                             </li>
                                         @elseif(auth()->user()->isAdmin())
-                                            <!-- ADMIN MENU -->
+                                            <!-- ADMIN MENU (tetap sama) -->
                                             <li>
                                                 <a href="{{ route('admin.dashboard') }}"
                                                     class="{{ request()->routeIs('admin.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
@@ -181,13 +184,6 @@
                                             Keluar
                                         </button>
                                     </form>
-
-                                    <!-- Back to Home -->
-                                    <a href="{{ route('home') }}"
-                                        class="flex items-center gap-x-3 px-2 py-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 rounded-md mt-1">
-                                        <i class="fas fa-home mt-0.5 h-5 w-5 shrink-0"></i>
-                                        Kembali ke Beranda
-                                    </a>
                                 </li>
                             </ul>
                         </nav>
@@ -288,14 +284,49 @@
                                                             Dashboard
                                                         </a>
                                                     </li>
-                                                    <li>
-                                                        <a href="{{ route('owner.reports.index') }}"
-                                                            class="{{ request()->routeIs('owner.reports.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
-                                                            <i
-                                                                class="fas fa-chart-bar {{ request()->routeIs('owner.reports.*') ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-600' }} mt-0.5 h-5 w-5 shrink-0"></i>
-                                                            Laporan
-                                                        </a>
+                                                    
+                                                    <!-- REPORTS DROPDOWN MOBILE -->
+                                                    <li x-data="{ open: false }">
+                                                        <button @click="open = !open"
+                                                            class="w-full text-left group flex items-center justify-between rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
+                                                            <div class="flex items-center gap-x-3">
+                                                                <i class="fas fa-chart-bar text-gray-400 group-hover:text-indigo-600 mt-0.5 h-5 w-5 shrink-0"></i>
+                                                                Laporan
+                                                            </div>
+                                                            <i class="fas fa-chevron-down text-xs transition-transform duration-200" 
+                                                               :class="{ 'rotate-180': open }"></i>
+                                                        </button>
+                                                        
+                                                        <!-- Dropdown Reports Mobile -->
+                                                        <ul x-show="open" x-collapse
+                                                            class="ml-6 mt-1 space-y-1 border-l border-gray-200 pl-3">
+                                                            <li>
+                                                                <a href="{{ route('owner.reports.financial') }}"
+                                                                    class="text-sm flex items-center gap-x-2 px-2 py-1.5 text-gray-500 hover:text-indigo-600">
+                                                                    <i class="fas fa-money-bill-wave text-xs w-4"></i> Keuangan
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="{{ route('owner.reports.bookings') }}"
+                                                                    class="text-sm flex items-center gap-x-2 px-2 py-1.5 text-gray-500 hover:text-indigo-600">
+                                                                    <i class="fas fa-calendar-check text-xs w-4"></i> Booking
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="{{ route('owner.reports.packages') }}"
+                                                                    class="text-sm flex items-center gap-x-2 px-2 py-1.5 text-gray-500 hover:text-indigo-600">
+                                                                    <i class="fas fa-box text-xs w-4"></i> Paket
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a href="{{ route('owner.reports.clients') }}"
+                                                                    class="text-sm flex items-center gap-x-2 px-2 py-1.5 text-gray-500 hover:text-indigo-600">
+                                                                    <i class="fas fa-users text-xs w-4"></i> Klien
+                                                                </a>
+                                                            </li>
+                                                        </ul>
                                                     </li>
+                                                    
                                                     <li>
                                                         <a href="{{ route('owner.users.index') }}"
                                                             class="{{ request()->routeIs('owner.users.*') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
@@ -305,7 +336,7 @@
                                                         </a>
                                                     </li>
                                                 @elseif(auth()->user()->isAdmin())
-                                                    <!-- ADMIN MENU MOBILE -->
+                                                    <!-- ADMIN MENU MOBILE (tetap sama) -->
                                                     <li>
                                                         <a href="{{ route('admin.dashboard') }}"
                                                             class="{{ request()->routeIs('admin.dashboard') ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600' }} group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6">
@@ -350,18 +381,22 @@
                     <!-- Page Content -->
                     <main class="py-8">
                         <div class="px-4 sm:px-6 lg:px-8">
+                            <!-- Header Slot -->
+                            @isset($header)
+                                <div class="mb-6">
+                                    {{ $header }}
+                                </div>
+                            @endisset
+
                             {{ $slot }}
                         </div>
                     </main>
                 </div>
             </div>
         @else
-            <!-- NAVBAR LAYOUT untuk Client & Guest -->
+            <!-- NAVBAR LAYOUT untuk Client & Guest (tetap sama) -->
             <div class="min-h-screen bg-gray-100">
                 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100 shadow-sm">
-                    <!-- Existing navbar code for Client/Guest -->
-                    <!-- ... KEEP THE EXISTING NAVBAR CODE FOR CLIENT/GUEST ... -->
-                    {{-- Keep the original navbar code for Client and Guest users --}}
                     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div class="flex justify-between h-16">
                             <!-- Logo Section -->
@@ -558,6 +593,13 @@
 
                 <!-- Page Content -->
                 <main>
+                    <!-- Header Slot untuk Client/Guest -->
+                    @isset($header)
+                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                            {{ $header }}
+                        </div>
+                    @endisset
+
                     {{ $slot }}
                 </main>
             </div>
@@ -566,9 +608,6 @@
         <!-- NAVBAR LAYOUT untuk Guest (Not logged in) -->
         <div class="min-h-screen bg-gray-100">
             <nav x-data="{ open: false }" class="bg-white border-b border-gray-100 shadow-sm">
-                <!-- Existing navbar code for Guest -->
-                <!-- ... KEEP THE EXISTING NAVBAR CODE FOR GUEST ... -->
-                {{-- Same as above guest section --}}
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between h-16">
                         <div class="flex items-center">
@@ -638,7 +677,15 @@
                     </div>
                 </div>
             </nav>
+            
             <main>
+                <!-- Header Slot untuk Guest -->
+                @isset($header)
+                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {{ $header }}
+                    </div>
+                @endisset
+
                 {{ $slot }}
             </main>
         </div>

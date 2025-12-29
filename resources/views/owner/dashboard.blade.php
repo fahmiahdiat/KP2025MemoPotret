@@ -1,455 +1,379 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-900 leading-tight">Owner Dashboard</h2>
-                <p class="text-sm text-gray-500 mt-1">Analisis & Monitoring Bisnis</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('owner.reports.index') }}" 
-                   class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition shadow-sm">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Laporan
-                </a>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Dashboard Owner</h1>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <i class="fas fa-calendar-alt mr-1"></i>
+                        {{ now()->translatedFormat('l, d F Y') }}
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('owner.reports.financial') }}"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        Laporan Detail
+                    </a>
+                </div>
             </div>
         </div>
     </x-slot>
 
-    <div class="py-8 bg-gray-50 min-h-screen">
+    <div class="py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Pendapatan Bulan Ini -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
-                            </svg>
-                        </div>
+            
+            <!-- STATISTIK UTAMA -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- UANG MASUK BULAN INI -->
+                <div class="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 mb-1">Pendapatan Bulan Ini</p>
-                            <p class="text-2xl font-bold text-gray-900">Rp {{ number_format($monthlyRevenue, 0, ',', '.') }}</p>
+                            <p class="text-sm text-green-800 mb-1">Uang Masuk (Bulan Ini)</p>
+                            <p class="text-2xl font-bold text-green-900">
+                                Rp {{ number_format($totalCashIn, 0, ',', '.') }}
+                            </p>
+                        </div>
+                        <div class="p-3 bg-green-200 rounded-lg">
+                            <i class="fas fa-money-bill-wave text-green-700"></i>
                         </div>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-500">{{ now()->translatedFormat('F Y') }}</span>
-                            @php
-                                $lastMonth = \Carbon\Carbon::now()->subMonth();
-                                $lastMonthRevenue = \App\Models\Booking::where('status', '!=', 'cancelled')
-                                    ->whereMonth('created_at', $lastMonth->month)
-                                    ->whereYear('created_at', $lastMonth->year)
-                                    ->sum('total_amount') ?? 0;
-                                
-                                $revenueChange = $lastMonthRevenue > 0 ? (($monthlyRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100 : ($monthlyRevenue > 0 ? 100 : 0);
-                            @endphp
-                            @if($revenueChange > 0)
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                                    </svg>
-                                    +{{ number_format($revenueChange, 1) }}%
-                                </span>
-                            @elseif($revenueChange < 0)
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                                    </svg>
-                                    {{ number_format($revenueChange, 1) }}%
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    ±0%
-                                </span>
-                            @endif
+                    <div class="mt-4 pt-4 border-t border-green-300/50">
+                        <div class="text-xs text-green-800 flex justify-between">
+                            <span>DP: <span class="font-semibold">Rp {{ number_format($dpCashIn, 0, ',', '.') }}</span></span>
+                            <span>Lunas: <span class="font-semibold">Rp {{ number_format($remainingCashIn, 0, ',', '.') }}</span></span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Total Booking -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                                </path>
-                            </svg>
-                        </div>
+                <!-- BOOKING BARU -->
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 mb-1">Total Booking</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $totalBookings }}</p>
+                            <p class="text-sm text-blue-800 mb-1">Booking Baru</p>
+                            <p class="text-2xl font-bold text-blue-900">
+                                {{ $newBookingsThisMonth }} <span class="text-sm font-normal">bulan ini</span>
+                            </p>
+                        </div>
+                        <div class="p-3 bg-blue-200 rounded-lg">
+                            <i class="fas fa-calendar-plus text-blue-700"></i>
                         </div>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <div class="text-xs text-gray-500">
-                            <span class="text-green-600 font-medium">{{ $completedBookings }}</span> selesai • 
-                            <span class="text-amber-600 font-medium">{{ $pendingBookings }}</span> pending
+                    <div class="mt-4 pt-4 border-t border-blue-300/50">
+                        <div class="text-xs text-blue-800">
+                            <span class="font-semibold">{{ $newBookingsThisWeek }} minggu ini</span> • 
+                            Nilai: <span class="font-semibold">Rp {{ number_format($bookingValueThisMonth, 0, ',', '.') }}</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Menunggu -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
+                <!-- PIUTANG -->
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 mb-1">Menunggu Verifikasi</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $pendingBookings }}</p>
+                            <p class="text-sm text-purple-800 mb-1">Piutang</p>
+                            <p class="text-2xl font-bold text-purple-900">
+                                Rp {{ number_format($outstandingAmount, 0, ',', '.') }}
+                            </p>
+                        </div>
+                        <div class="p-3 bg-purple-200 rounded-lg">
+                            <i class="fas fa-clock text-purple-700"></i>
                         </div>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-500">Butuh tindakan</span>
-                            @if($pendingBookings > 0)
-                                <a href="{{ route('admin.bookings.index') }}?status=pending" 
-                                   class="text-xs font-medium text-indigo-600 hover:text-indigo-800">
-                                    Lihat →
-                                </a>
-                            @endif
+                    <div class="mt-4 pt-4 border-t border-purple-300/50">
+                        <div class="text-xs text-purple-800">
+                            <span class="font-semibold">{{ $outstandingCount }} booking</span> belum lunas
                         </div>
                     </div>
                 </div>
 
-                <!-- Client Aktif -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                </path>
-                            </svg>
-                        </div>
+                <!-- PERLU TINDAKAN -->
+                <div class="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 mb-1">Client Aktif</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $activeClients }}</p>
+                            <p class="text-sm text-amber-800 mb-1">Perlu Tindakan</p>
+                            <p class="text-2xl font-bold text-amber-900">{{ $requiresAction }}</p>
+                        </div>
+                        <div class="p-3 bg-amber-200 rounded-lg">
+                            <i class="fas fa-exclamation-circle text-amber-700"></i>
                         </div>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        @php
-                            $newClientsThisMonth = \App\Models\User::where('role', 'client')
-                                ->whereMonth('created_at', now()->month)
-                                ->whereYear('created_at', now()->year)
-                                ->count();
-                        @endphp
-                        <div class="text-xs text-gray-500">
-                            <span class="text-green-600 font-medium">+{{ $newClientsThisMonth }}</span> bulan ini
+                    <div class="mt-4 pt-4 border-t border-amber-300/50">
+                        <div class="text-xs text-amber-800 flex justify-between">
+                            <span>Verifikasi DP: <span class="font-semibold">{{ $pendingVerification }}</span></span>
+                            <span>Verifikasi Lunas: <span class="font-semibold">{{ $pendingPayments }}</span></span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Two Columns -->
-            <div class="grid lg:grid-cols-2 gap-8 mb-8">
-                <!-- Paket Terpopuler -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
+            <!-- GRAFIK & STATISTIK -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- GRAFIK PENDAPATAN -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">Paket Terpopuler</h3>
-                            <p class="text-sm text-gray-500 mt-1">{{ now()->translatedFormat('F Y') }}</p>
-                        </div>
-                        <a href="{{ route('admin.packages.index') }}" 
-                           class="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                            Kelola Paket →
-                        </a>
-                    </div>
-
-                    @if($packageStats->count() > 0)
-                        <div class="space-y-5">
-                            @foreach($packageStats as $package)
-                                <div>
-                                    <div class="flex justify-between items-center mb-2">
-                                        <div>
-                                            <span class="font-medium text-gray-900">{{ $package->name }}</span>
-                                            <span class="ml-2 text-xs text-gray-500">
-                                                Rp {{ number_format($package->price, 0, ',', '.') }}
-                                            </span>
-                                        </div>
-                                        <span class="text-sm font-semibold text-gray-700">
-                                            {{ $package->bookings_count }} booking
-                                        </span>
-                                    </div>
-                                    <div class="w-full bg-gray-100 rounded-full h-2">
-                                        @php
-                                            $maxBookings = $packageStats->max('bookings_count');
-                                            $percentage = $maxBookings > 0 ? ($package->bookings_count / $maxBookings) * 100 : 0;
-                                        @endphp
-                                        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-500" 
-                                             style="width: {{ $percentage }}%"></div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-8">
-                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                </svg>
-                            </div>
-                            <h4 class="text-gray-900 font-medium">Belum ada data paket</h4>
-                            <p class="text-sm text-gray-500 mt-1">Tambah paket untuk memulai</p>
-                        </div>
-                    @endif
-                </div>
-
-                <!-- Booking Terbaru -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Booking Terbaru</h3>
-                            <p class="text-sm text-gray-500 mt-1">10 booking terakhir</p>
-                        </div>
-                        <a href="{{ route('admin.bookings.index') }}" 
-                           class="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                            Lihat Semua →
-                        </a>
-                    </div>
-
-                    @if($recentBookings->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentBookings as $booking)
-                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition duration-150">
-                                    <div class="flex items-center">
-                                        <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-400 flex items-center justify-center text-white font-bold text-sm mr-3">
-                                            {{ substr($booking->user->name, 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900">{{ $booking->user->name }}</p>
-                                            <p class="text-xs text-gray-500">{{ $booking->package->name }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-sm font-bold text-gray-900">Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</p>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            {{ $booking->status == 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                                            ($booking->status == 'completed' ? 'bg-green-100 text-green-800 border border-green-200' :
-                                            ($booking->status == 'confirmed' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 
-                                            'bg-gray-100 text-gray-800 border border-gray-200')) }}">
-                                            {{ ucfirst($booking->status) }}
-                                        </span>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-8">
-                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                            </div>
-                            <h4 class="text-gray-900 font-medium">Belum ada booking</h4>
-                            <p class="text-sm text-gray-500 mt-1">Belum ada booking terbaru</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Charts Section -->
-            <div class="grid lg:grid-cols-2 gap-8">
-                <!-- Pertumbuhan Client -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Pertumbuhan Client</h3>
-                            <p class="text-sm text-gray-500 mt-1">Total client per bulan</p>
-                        </div>
-                        <div class="flex items-center text-xs text-gray-500">
-                            <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
-                            Total Client
+                            <h3 class="text-lg font-semibold text-gray-900">Pendapatan 6 Bulan Terakhir</h3>
+                            <p class="text-sm text-gray-500">Uang masuk setelah diverifikasi</p>
                         </div>
                     </div>
-                    <div class="h-72">
-                        <canvas id="userGrowthChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Pendapatan 6 Bulan -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Pendapatan 6 Bulan Terakhir</h3>
-                            <p class="text-sm text-gray-500 mt-1">Trend pendapatan bulanan</p>
-                        </div>
-                        <div class="flex items-center text-xs text-gray-500">
-                            <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-                            Pendapatan
-                        </div>
-                    </div>
-                    <div class="h-72">
+                    <div class="h-64">
                         <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
-            </div>
 
-            <!-- Quick Stats -->
-            <div class="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Statistik Cepat</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    @php
-                        // Calculate quick stats
-                        $avgMonthlyRevenue = $totalBookings > 0 ? $monthlyRevenue / max(1, ($totalBookings / 6)) : 0;
-                        $avgBookingValue = $totalBookings > 0 ? $monthlyRevenue / $totalBookings : 0;
-                        $completionRate = $totalBookings > 0 ? ($completedBookings / $totalBookings) * 100 : 0;
-                    @endphp
-                    <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <div class="text-2xl font-bold text-gray-900">
-                            @if($avgMonthlyRevenue >= 1000000)
-                                Rp {{ number_format($avgMonthlyRevenue/1000000, 1, ',', '.') }}JT
-                            @else
-                                Rp {{ number_format($avgMonthlyRevenue, 0, ',', '.') }}
-                            @endif
+                <!-- STATISTIK PERTUMBUHAN KLIEN -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Pertumbuhan Klien</h3>
+                            <p class="text-sm text-gray-500">Statistik klien baru</p>
                         </div>
-                        <div class="text-xs text-gray-500 mt-1">Rata-rata/bulan</div>
+                        <div class="text-sm font-medium {{ $clientGrowth['month_over_month'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                            {{ $clientGrowth['month_over_month'] >= 0 ? '+' : '' }}{{ $clientGrowth['month_over_month'] }}%
+                        </div>
                     </div>
-                    <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <div class="text-2xl font-bold text-gray-900">
-                            Rp {{ number_format($avgBookingValue, 0, ',', '.') }}
+                    
+                    <!-- Ringkasan Growth -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                            <div class="text-lg font-bold text-blue-700">{{ $newClientsThisMonth }}</div>
+                            <div class="text-xs text-blue-600">Klien Baru<br>Bulan Ini</div>
                         </div>
-                        <div class="text-xs text-gray-500 mt-1">Rata-rata/booking</div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <div class="text-lg font-bold text-green-700">{{ $clientGrowth['month_over_month'] }}%</div>
+                            <div class="text-xs text-green-600">Growth<br>Bulan ke Bulan</div>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <div class="text-lg font-bold text-purple-700">{{ $clientGrowth['total_growth_6m'] }}%</div>
+                            <div class="text-xs text-purple-600">Total Growth<br>6 Bulan</div>
+                        </div>
                     </div>
-                    <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <div class="text-2xl font-bold text-gray-900">
-                            {{ number_format($completionRate, 1) }}%
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">Tingkat penyelesaian</div>
-                    </div>
-                    <div class="text-center p-4 bg-gray-50 rounded-xl">
-                        <div class="text-2xl font-bold text-gray-900">
-                            {{ $packageStats->count() }}
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">Total paket aktif</div>
+                    
+                    <!-- Chart Client Growth -->
+                    <div class="h-48">
+                        <canvas id="clientGrowthChart"></canvas>
                     </div>
                 </div>
             </div>
+
+            <!-- ACARA MENDATANG & PAKET TERPOPULER -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- ACARA MENDATANG -->
+                <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Acara Mendatang</h3>
+                                <p class="text-sm text-gray-500">{{ $upcomingEvents->count() }} acara berikutnya</p>
+                            </div>
+                            <a href="{{ route('admin.calendar') }}" class="text-sm text-indigo-600 hover:text-indigo-500">
+                                Lihat kalender
+                            </a>
+                        </div>
+                    </div>
+                    <div class="divide-y divide-gray-200">
+                        @forelse($upcomingEvents as $event)
+                        <div class="px-6 py-4 hover:bg-gray-50">
+                            <div class="flex items-start">
+                                <div class="mr-4">
+                                    <div class="text-lg font-bold text-gray-900">{{ $event->event_date->format('d') }}</div>
+                                    <div class="text-xs text-gray-500 uppercase">{{ $event->event_date->format('M') }}</div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ $event->package->name }}</p>
+                                            <p class="text-xs text-gray-500">{{ $event->user->name }}</p>
+                                        </div>
+                                        <span class="text-xs font-medium px-2 py-1 rounded-full 
+                                            {{ $event->status == 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                                              ($event->status == 'in_progress' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800') }}">
+                                            {{ $event->status }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-gray-500">
+                                        <i class="fas fa-clock mr-1"></i> {{ date('H:i', strtotime($event->event_time)) }} WIB •
+                                        <i class="fas fa-map-marker-alt ml-2 mr-1"></i> {{ Str::limit($event->event_location, 20) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="px-6 py-8 text-center">
+                            <i class="fas fa-calendar-check text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-sm text-gray-500">Tidak ada acara mendatang</p>
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+
+                <!-- PAKET TERPOPULER -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Paket Terpopuler</h3>
+                        <a href="{{ route('admin.packages.index') }}" class="text-sm text-indigo-600 hover:text-indigo-500">
+                            Lihat semua
+                        </a>
+                    </div>
+                    <div class="space-y-4">
+                        @forelse($topPackages as $package)
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-camera text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{ $package->name }}</p>
+                                    <p class="text-xs text-gray-500">{{ $package->bookings_count }} booking</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-bold text-gray-900">Rp {{ number_format($package->price, 0, ',', '.') }}</p>
+                                <p class="text-xs text-green-600 font-medium">
+                                    Total: Rp {{ number_format($package->bookings_sum_total_amount, 0, ',', '.') }}
+                                </p>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="text-center py-8">
+                            <i class="fas fa-box-open text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-sm text-gray-500">Belum ada data paket</p>
+                        </div>
+                        @endforelse
+                    </div>
+                    
+                    <!-- Ringkasan Paket -->
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Ringkasan Performa Paket</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-blue-50 p-3 rounded-lg">
+                                <div class="text-xs text-blue-600 font-medium mb-1">Total Paket</div>
+                                <div class="text-lg font-bold text-blue-700">{{ $topPackages->count() }}</div>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded-lg">
+                                <div class="text-xs text-green-600 font-medium mb-1">Rata-rata Harga</div>
+                                <div class="text-lg font-bold text-green-700">
+                                    Rp {{ number_format($topPackages->avg('price') ?? 0, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOOKING TERBARU -->
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Booking Terbaru</h2>
+                            <p class="text-sm text-gray-500">{{ $recentBookings->count() }} booking terakhir</p>
+                        </div>
+                        <a href="{{ route('admin.bookings.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                            Lihat semua →
+                        </a>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Klien</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paket</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Acara</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pembayaran</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($recentBookings as $booking)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">{{ $booking->booking_code }}</div>
+                                    <div class="text-xs text-gray-500">{{ $booking->created_at->format('d/m H:i') }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">{{ $booking->user->name }}</div>
+                                    <div class="text-xs text-gray-500">{{ $booking->user->email }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">{{ $booking->package->name }}</div>
+                                    <div class="text-xs text-gray-500">Rp {{ number_format($booking->total_amount, 0, ',', '.') }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">{{ $booking->event_date->format('d M Y') }}</div>
+                                    <div class="text-xs text-gray-500">{{ date('H:i', strtotime($booking->event_time)) }} WIB</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 inline-flex text-xs font-semibold rounded-full 
+                                        {{ $booking->status == 'pending' ? 'bg-amber-100 text-amber-800' :
+                                          ($booking->status == 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                                          ($booking->status == 'in_progress' ? 'bg-purple-100 text-purple-800' :
+                                          ($booking->status == 'results_uploaded' ? 'bg-indigo-100 text-indigo-800' :
+                                          ($booking->status == 'pending_lunas' ? 'bg-yellow-100 text-yellow-800' :
+                                          ($booking->status == 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'))))) }}">
+                                        {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @if($booking->remaining_amount > 0)
+                                        <div class="text-sm text-red-600 font-medium">
+                                            Rp {{ number_format($booking->remaining_amount, 0, ',', '.') }}
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            {{ $booking->remaining_payment_proof ? 'Bukti diupload' : 'Belum upload' }}
+                                        </div>
+                                    @else
+                                        <span class="text-sm text-green-600 font-medium">LUNAS</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                    Tidak ada booking
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
     @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script>
-            // User Growth Chart
-            @php
-                // Generate user growth data for chart
-                $userGrowthMonths = [];
-                $userGrowthCounts = [];
-                
-                for ($i = 5; $i >= 0; $i--) {
-                    $date = \Carbon\Carbon::now()->subMonths($i);
-                    $userCount = \App\Models\User::where('role', 'client')
-                        ->whereMonth('created_at', '<=', $date->month)
-                        ->whereYear('created_at', '<=', $date->year)
-                        ->count();
-                    
-                    $userGrowthMonths[] = $date->translatedFormat('M');
-                    $userGrowthCounts[] = $userCount;
-                }
-            @endphp
-
-            const userCtx = document.getElementById('userGrowthChart').getContext('2d');
-            new Chart(userCtx, {
-                type: 'line',
-                data: {
-                    labels: @json($userGrowthMonths),
-                    datasets: [{
-                        label: 'Total Client',
-                        data: @json($userGrowthCounts),
-                        borderColor: '#8b5cf6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.05)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#8b5cf6',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleFont: { size: 12 },
-                            bodyFont: { size: 13 },
-                            padding: 12,
-                            cornerRadius: 6
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                drawBorder: false
-                            },
-                            ticks: {
-                                stepSize: 1,
-                                font: { size: 11 },
-                                color: '#6b7280'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: { size: 11 },
-                                color: '#6b7280'
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Revenue Chart (Last 6 Months)
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Revenue Chart
             const revenueCtx = document.getElementById('revenueChart').getContext('2d');
             new Chart(revenueCtx, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: @json($chartMonths),
+                    labels: @json($revenueChart['labels']),
                     datasets: [{
                         label: 'Pendapatan',
-                        data: @json($chartRevenues),
-                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                        borderRadius: 6,
-                        borderSkipped: false,
+                        data: @json($revenueChart['data']),
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleFont: { size: 12 },
-                            bodyFont: { size: 13 },
-                            padding: 12,
-                            cornerRadius: 6,
                             callbacks: {
-                                label: function (context) {
-                                    return 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                                label: function(context) {
+                                    return 'Rp ' + context.raw.toLocaleString('id-ID');
                                 }
                             }
                         }
@@ -457,34 +381,51 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: {
-                                drawBorder: false
-                            },
                             ticks: {
-                                callback: function (value) {
+                                callback: function(value) {
                                     if (value >= 1000000) {
-                                        return 'Rp' + (value / 1000000).toFixed(1) + 'JT';
-                                    } else if (value >= 1000) {
-                                        return 'Rp' + (value / 1000).toFixed(0) + 'RB';
+                                        return 'Rp ' + (value / 1000000).toFixed(1) + 'Jt';
                                     }
-                                    return 'Rp' + value.toLocaleString('id-ID');
-                                },
-                                font: { size: 11 },
-                                color: '#6b7280'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: { size: 11 },
-                                color: '#6b7280'
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
                             }
                         }
                     }
                 }
             });
-        </script>
+
+            // Client Growth Chart
+            const clientGrowthCtx = document.getElementById('clientGrowthChart').getContext('2d');
+            new Chart(clientGrowthCtx, {
+                type: 'bar',
+                data: {
+                    labels: @json($clientGrowth['chart_labels']),
+                    datasets: [{
+                        label: 'Klien Baru',
+                        data: @json($clientGrowth['chart_data']),
+                        backgroundColor: '#3B82F6',
+                        borderColor: '#2563EB',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
     @endpush
 </x-app-layout>

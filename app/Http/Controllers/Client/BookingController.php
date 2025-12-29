@@ -293,69 +293,70 @@ class BookingController extends Controller
     }
 
     public function cancel(Request $request, Booking $booking)
-    {
-        // Authorization check
-        if ($booking->user_id !== auth()->id()) {
-            abort(403);
-        }
-
-        // Validation
-        $request->validate([
-            'cancel_reason' => 'required|string|max:255',
-            'cancel_details' => 'required|string|max:1000',
-        ]);
-
-        // Check if booking is already cancelled
-        if ($booking->status === 'cancelled') {
-            return back()->with('error', 'Booking sudah dibatalkan sebelumnya.');
-        }
-
-        // Check if booking can be cancelled (MAKSIMAL H-30 rule)
-        // PERBAIKAN: Hitung hari dengan benar, pastikan acara MASIH DI MASA DEPAN
-        $now = Carbon::now();
-        $eventDate = Carbon::parse($booking->event_date);
-
-        // Jika tanggal acara sudah lewat
-        if ($eventDate->lt($now)) {
-            return back()->with('error', 'Tidak bisa membatalkan acara yang sudah lewat.');
-        }
-
-        // Hitung SELISIH HARI yang benar
-        $daysBeforeEvent = $now->diffInDays($eventDate, false); // false = tidak absolute
-
-        // DEBUG LOG
-        \Log::info('Cancel Booking Debug', [
-            'booking_id' => $booking->id,
-            'event_date' => $eventDate->format('Y-m-d'),
-            'now' => $now->format('Y-m-d'),
-            'daysBeforeEvent' => $daysBeforeEvent,
-            'status' => $booking->status
-        ]);
-
-        // TIDAK BISA cancel jika < 30 hari
-        // PERBAIKAN: $daysBeforeEvent harus >= 30 (artinya masih 30 hari atau lebih sebelum acara)
-        if ($daysBeforeEvent < 30) {
-            return back()->with(
-                'error',
-                '❌ Pembatalan hanya dapat dilakukan MAKSIMAL H-30 hari sebelum acara. ' .
-                'Acara Anda ' . $daysBeforeEvent . ' hari lagi.'
-            );
-        }
-
-        // Update booking status - DP TIDAK DIKEMBALIKAN
-        $booking->update([
-            'status' => 'cancelled',
-            'cancellation_reason' => $request->cancel_reason,
-            'cancellation_details' => $request->cancel_details,
-            'cancelled_at' => Carbon::now(),
-            'admin_notes' => 'Dibatalkan oleh client (DP hangus): ' . $request->cancel_reason
-        ]);
-
-        // TODO: Kirim notifikasi ke admin dan user
-
-        return redirect()->route('client.dashboard')
-            ->with('warning', 'Booking berhasil dibatalkan. DP 50% TIDAK DIKEMBALIKAN.');
+{
+    // Authorization check
+    if ($booking->user_id !== auth()->id()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Akses ditolak.'
+        ], 403);
     }
+
+    // Check if booking is already cancelled
+    if ($booking->status === 'cancelled') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Booking sudah dibatalkan sebelumnya.'
+        ], 400);
+    }
+
+    // Validation
+    $request->validate([
+        'cancel_reason' => 'required|string|max:255',
+        'cancel_details' => 'required|string|max:1000',
+    ]);
+
+    // Check if booking can be cancelled (MAKSIMAL H-30 rule)
+    $now = Carbon::now();
+    $eventDate = Carbon::parse($booking->event_date);
+
+    // Jika tanggal acara sudah lewat
+    if ($eventDate->lt($now)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Tidak bisa membatalkan acara yang sudah lewat.'
+        ], 400);
+    }
+
+    // Hitung SELISIH HARI yang benar
+    $daysBeforeEvent = $now->diffInDays($eventDate, false); // false = tidak absolute
+
+    // TIDAK BISA cancel jika < 30 hari
+    if ($daysBeforeEvent < 30) {
+        return response()->json([
+            'success' => false,
+            'message' => '❌ Pembatalan hanya dapat dilakukan MAKSIMAL H-30 hari sebelum acara. ' .
+                        'Acara Anda ' . $daysBeforeEvent . ' hari lagi.'
+        ], 400);
+    }
+
+    // Update booking status - DP TIDAK DIKEMBALIKAN
+    $booking->update([
+        'status' => 'cancelled',
+        'cancellation_reason' => $request->cancel_reason,
+        'cancellation_details' => $request->cancel_details,
+        'cancelled_at' => Carbon::now(),
+        'admin_notes' => 'CLIENT_CANCEL: ' . $request->cancel_reason,
+    ]);
+
+    // TODO: Kirim notifikasi ke admin dan user
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Booking berhasil dibatalkan. DP 50% TIDAK DIKEMBALIKAN.',
+        'redirect' => route('client.dashboard')
+    ]);
+}
 
 
 }

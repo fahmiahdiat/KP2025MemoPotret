@@ -5,11 +5,7 @@
                 <h2 class="text-2xl font-bold text-gray-900 leading-tight">Kelola Booking</h2>
                 <p class="text-sm text-gray-500 mt-1">Pantau dan kelola semua pesanan masuk</p>
             </div>
-            <a href="{{ route('admin.bookings.create') }}" 
-               class="inline-flex items-center px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Buat Booking Manual
-            </a>
+         
         </div>
     </x-slot>
 
@@ -322,6 +318,7 @@
                                         @php
                                             $statusClass = match($booking->status) {
                                                 'pending' => 'bg-amber-100 text-amber-800 border-amber-200',
+                                                'pending_lunas' => 'bg-emerald-100 text-emerald-800 border-emerald-200', // Warna baru
                                                 'confirmed' => 'bg-blue-100 text-blue-800 border-blue-200',
                                                 'in_progress' => 'bg-cyan-100 text-cyan-800 border-cyan-200',
                                                 'results_uploaded' => 'bg-purple-100 text-purple-800 border-purple-200',
@@ -332,6 +329,7 @@
                                             
                                             $statusLabel = match($booking->status) {
                                                 'pending' => '⏳ Pending',
+                                                'pending_lunas' => '💰 Menunggu Pelunasan', // Label baru
                                                 'confirmed' => '✅ Confirmed',
                                                 'in_progress' => '📸 On Process',
                                                 'results_uploaded' => '📤 Uploaded',

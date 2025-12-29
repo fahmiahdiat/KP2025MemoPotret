@@ -23,7 +23,7 @@ Route::middleware(['auth', 'role:client'])->prefix('client')->name('client.')->g
     Route::post('/bookings/{booking}/upload-payment', [\App\Http\Controllers\Client\BookingController::class, 'uploadPayment'])->name('bookings.upload-payment');
     // TAMBAHKAN RUTE INI:
     Route::post('/bookings/{booking}/upload-remaining-payment', [\App\Http\Controllers\Client\BookingController::class, 'uploadRemainingPayment'])->name('bookings.upload-remaining-payment');
-    Route::delete('/bookings/{booking}/cancel', [\App\Http\Controllers\Client\BookingController::class, 'cancel'])
+    Route::post('/bookings/{booking}/cancel', [\App\Http\Controllers\Client\BookingController::class, 'cancel'])
         ->name('bookings.cancel');
 
 
@@ -65,9 +65,10 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::get('/dashboard', [\App\Http\Controllers\Owner\DashboardController::class, 'index'])->name('dashboard');
 
     // Reports
-    Route::get('/reports', [\App\Http\Controllers\Owner\ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [\App\Http\Controllers\Owner\ReportController::class, 'export'])->name('reports.export');
     Route::get('/reports/financial', [\App\Http\Controllers\Owner\ReportController::class, 'financial'])->name('reports.financial');
+    // TAMBAHKAN DI DALAM OWNER ROUTES GROUP:
+Route::get('/reports/financial/export', [\App\Http\Controllers\Owner\ReportController::class, 'exportFinancial'])->name('reports.financial.export');
     Route::get('/reports/bookings', [\App\Http\Controllers\Owner\ReportController::class, 'bookings'])->name('reports.bookings');
     Route::get('/reports/packages', [\App\Http\Controllers\Owner\ReportController::class, 'packages'])->name('reports.packages');
     Route::get('/reports/clients', [\App\Http\Controllers\Owner\ReportController::class, 'clients'])->name('reports.clients');
@@ -79,5 +80,18 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::post('/users/{user}/toggle-status', [\App\Http\Controllers\Owner\UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::get('/users/{user}/client', [\App\Http\Controllers\Owner\UserController::class, 'showClient'])->name('users.show-client');
 
+    
+
+});
+
+// =================== ADMIN & OWNER SHARED ROUTES ===================
+// Route yang bisa diakses admin DAN owner
+Route::middleware(['auth', 'role:admin,owner'])->prefix('admin')->name('admin.')->group(function () {
+    // Calendar Routes
+    Route::get('/calendar', [\App\Http\Controllers\Admin\ScheduleController::class, 'index'])
+        ->name('calendar');
+    
+    Route::get('/calendar/events', [\App\Http\Controllers\Admin\ScheduleController::class, 'getEvents'])
+        ->name('calendar.events');
 });
 

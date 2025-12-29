@@ -146,7 +146,7 @@ class BookingController extends Controller
                 'cancellation_reason' => $request->input('cancel_reason', 'invalid_payment'),
                 'cancellation_details' => $request->input('cancel_details', 'Dibatalkan oleh admin'),
                 'cancelled_at' => now(),
-                'admin_notes' => 'Dibatalkan oleh admin: ' . ($request->input('cancel_details', 'DP tidak valid'))
+                'admin_notes' => 'ADMIN_CANCEL: ' . ($request->input('cancel_details', 'DP tidak valid')), // ✅ ADMIN PREFIX
             ]);
 
             return response()->json([
@@ -195,15 +195,13 @@ class BookingController extends Controller
             $dpAmount = $booking->total_amount * 0.5;
             $remainingAmount = $booking->total_amount - $dpAmount;
 
-            // Update booking
             $booking->update([
                 'dp_amount' => $dpAmount,
                 'remaining_amount' => $remainingAmount,
                 'status' => 'confirmed',
-                'dp_verified_at' => now(), // DP diverifikasi
+                'dp_verified_at' => now(),
             ]);
 
-            // PERBAIKAN: Cek apakah tanggal sekarang sudah penuh
             $newBookedCount = $bookedCount + 1;
             $isFull = $newBookedCount >= 5;
 
@@ -241,9 +239,8 @@ class BookingController extends Controller
                 ], 400);
             }
 
-            // ✅ PERBAIKAN: Set sisa tagihan ke 0
             $updateData = [
-                'remaining_amount' => 0, // ✅ SET KE 0
+                'remaining_amount' => 0,
                 'status' => 'completed',
                 'remaining_verified_at' => now(),
                 'completed_at' => now()
